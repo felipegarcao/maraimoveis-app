@@ -1,0 +1,22 @@
+# Nunca entram na imagem
+node_modules
+.next
+.git
+.gitignore
+
+# Dados locais e uploads de desenvolvimento
+.data
+dados
+
+# Segredos: toda configuração chega por variável de ambiente em runtime
+.env
+.env.*
+!.env.example
+
+# Ruído
+*.md
+!README.md
+.DS_Store
+.vscode
+.idea
+npm-debug.log*

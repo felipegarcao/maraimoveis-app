@@ -1,0 +1,306 @@
+// Modelo de dados PostgreSQL.
+//
+// Os nomes de tabela e coluna são snake_case para que consultas manuais no psql
+// não precisem de aspas. O mapeamento para as entidades do domínio (que usam
+// camelCase e datas como string ISO) fica em src/infrastructure/persistence/prisma-mappers.ts.
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../node_modules/.prisma/client"
+}
+
+// A URL de conexão não vive mais aqui (Prisma 7): fica em prisma.config.ts
+// para os comandos de migração, e chega ao cliente pelo driver adapter.
+datasource db {
+  provider = "postgresql"
+}
+
+// ----------------------------------------------------------------- enums
+
+enum TipoImovel {
+  apartamento
+  casa
+  kitnet
+  sobrado
+  comercial
+  galpao
+}
+
+enum StatusImovel {
+  disponivel
+  alugado
+  manutencao
+  inativo
+}
+
+enum TipoDocumento {
+  cpf
+  cnpj
+}
+
+enum StatusOcupacao {
+  ativa
+  encerrada
+}
+
+enum MotivoSaida {
+  fim_contrato
+  rescisao_inquilino
+  rescisao_proprietario
+  inadimplencia
+  outro
+}
+
+enum StatusContrato {
+  rascunho
+  vigente
+  encerrado
+}
+
+enum FormaPagamento {
+  pix
+  transferencia
+  dinheiro
+  boleto
+  cartao
+}
+
+enum PapelUsuario {
+  admin
+  gestor
+}
+
+enum OrigemLead {
+  site_imovel
+  site_contato
+}
+
+enum StatusLead {
+  novo
+  em_atendimento
+  convertido
+  descartado
+}
+
+// ---------------------------------------------------------------- imóveis
+
+model Imovel {
+  id        String       @id
+  titulo    String
+  descricao String
+  tipo      TipoImovel
+  status    StatusImovel
+
+  // Endereço achatado em colunas: a vitrine filtra por cidade e bairro.
+  logradouro  String
+  numero      String
+  complemento String?
+  bairro      String
+  cidade      String
+  estado      String  @db.Char(2)
+  cep         String  @db.VarChar(8)
+
+  valorAluguel    Decimal @map("valor_aluguel")    @db.Decimal(12, 2)
+  valorCondominio Decimal @map("valor_condominio") @db.Decimal(12, 2)
+  valorIptu       Decimal @map("valor_iptu")       @db.Decimal(12, 2)
+
+  quartos    Int
+  suites     Int
+  banheiros  Int
+  vagas      Int
+  areaM2     Decimal @map("area_m2") @db.Decimal(10, 2)
+  mobiliado  Boolean
+  aceitaPet  Boolean @map("aceita_pet")
+  condominio Boolean
+
+  /// Título, descrição e endereço sem acentos e em minúsculas. Mantida na
+  /// escrita para que a busca ignore acentuação sem depender da extensão unaccent.
+  busca String
+
+  criadoEm     DateTime @map("criado_em")     @db.Timestamptz(3)
+  atualizadoEm DateTime @map("atualizado_em") @db.Timestamptz(3)
+
+  fotos     FotoImovel[]
+  ocupacoes Ocupacao[]
+  leads     Lead[]
+
+  @@index([status])
+  @@index([cidade, bairro])
+  @@map("imoveis")
+}
+
+model FotoImovel {
+  id        String @id
+  imovelId  String @map("imovel_id")
+  url       String
+  descricao String
+  ordem     Int
+
+  imovel Imovel @relation(fields: [imovelId], references: [id], onDelete: Cascade)
+
+  @@index([imovelId, ordem])
+  @@map("fotos_imovel")
+}
+
+// -------------------------------------------------------------- inquilinos
+
+model Inquilino {
+  id            String        @id
+  nome          String
+  tipoDocumento TipoDocumento @map("tipo_documento")
+  documento     String        @unique @db.VarChar(14)
+  email         String?
+  telefone      String        @db.VarChar(13)
+  profissao     String?
+  observacoes   String?
+  ativo         Boolean
+  /// Nome, e-mail, documento e telefone normalizados para busca.
+  busca         String
+  dataCadastro  DateTime      @map("data_cadastro") @db.Timestamptz(3)
+  atualizadoEm  DateTime      @map("atualizado_em") @db.Timestamptz(3)
+
+  ocupacoes  Ocupacao[]
+  credencial CredencialInquilino?
+
+  @@index([ativo])
+  @@map("inquilinos")
+}
+
+/// Senha própria do inquilino no portal. Ausente = ele ainda usa o documento.
+model CredencialInquilino {
+  inquilinoId  String   @id @map("inquilino_id")
+  senhaHash    String   @map("senha_hash")
+  atualizadoEm DateTime @map("atualizado_em") @db.Timestamptz(3)
+
+  inquilino Inquilino @relation(fields: [inquilinoId], references: [id], onDelete: Cascade)
+
+  @@map("credenciais_inquilinos")
+}
+
+// --------------------------------------------------------------- ocupações
+
+model Ocupacao {
+  id          String         @id
+  imovelId    String         @map("imovel_id")
+  inquilinoId String         @map("inquilino_id")
+  dataEntrada DateTime       @map("data_entrada") @db.Date
+  dataSaida   DateTime?      @map("data_saida")   @db.Date
+  status      StatusOcupacao
+
+  valorAluguel   Decimal      @map("valor_aluguel")   @db.Decimal(12, 2)
+  diaVencimento  Int          @map("dia_vencimento")
+  valorCaucao    Decimal      @map("valor_caucao")    @db.Decimal(12, 2)
+  motivoSaida    MotivoSaida? @map("motivo_saida")
+  condicoesEntrega String?    @map("condicoes_entrega")
+  observacoes    String?
+
+  criadoEm DateTime @map("criado_em") @db.Timestamptz(3)
+
+  imovel     Imovel      @relation(fields: [imovelId], references: [id], onDelete: Restrict)
+  inquilino  Inquilino   @relation(fields: [inquilinoId], references: [id], onDelete: Restrict)
+  contratos  Contrato[]
+  pagamentos Pagamento[]
+
+  @@index([imovelId, status])
+  @@index([inquilinoId, status])
+  @@map("ocupacoes")
+}
+
+// --------------------------------------------------------------- contratos
+
+model Contrato {
+  id         String         @id
+  ocupacaoId String         @map("ocupacao_id")
+  numero     String         @unique
+  status     StatusContrato
+
+  valorAluguel        Decimal  @map("valor_aluguel")  @db.Decimal(12, 2)
+  valorCaucao         Decimal  @map("valor_caucao")   @db.Decimal(12, 2)
+  diaVencimento       Int      @map("dia_vencimento")
+  prazoMeses          Int      @map("prazo_meses")
+  indiceReajuste      String   @map("indice_reajuste")
+  dataInicio          DateTime @map("data_inicio")    @db.Date
+  dataFim             DateTime @map("data_fim")       @db.Date
+  clausulasAdicionais String?  @map("clausulas_adicionais")
+
+  arquivoPdfUrl String?   @map("arquivo_pdf_url")
+  dataGeracao   DateTime? @map("data_geracao") @db.Timestamptz(3)
+  criadoEm      DateTime  @map("criado_em")    @db.Timestamptz(3)
+
+  ocupacao Ocupacao @relation(fields: [ocupacaoId], references: [id], onDelete: Cascade)
+
+  @@index([ocupacaoId])
+  @@index([status])
+  @@map("contratos")
+}
+
+// -------------------------------------------------------------- financeiro
+
+model Pagamento {
+  id             String @id
+  ocupacaoId     String @map("ocupacao_id")
+  /// Formato yyyy-MM. É um rótulo de competência, não uma data.
+  mesReferencia  String @map("mes_referencia") @db.VarChar(7)
+
+  valorAluguel    Decimal @map("valor_aluguel")   @db.Decimal(12, 2)
+  valorAgua       Decimal @map("valor_agua")      @db.Decimal(12, 2)
+  valorLuz        Decimal @map("valor_luz")       @db.Decimal(12, 2)
+  outrosValores   Decimal @map("outros_valores")  @db.Decimal(12, 2)
+  descricaoOutros String? @map("descricao_outros")
+
+  dataVencimento DateTime @map("data_vencimento") @db.Date
+  criadoEm       DateTime @map("criado_em")       @db.Timestamptz(3)
+
+  ocupacao     Ocupacao      @relation(fields: [ocupacaoId], references: [id], onDelete: Cascade)
+  recebimentos Recebimento[]
+
+  // Uma cobrança por mês e por ocupação — a regra vale também no banco.
+  @@unique([ocupacaoId, mesReferencia])
+  @@index([mesReferencia])
+  @@map("pagamentos")
+}
+
+model Recebimento {
+  id          String         @id
+  pagamentoId String         @map("pagamento_id")
+  valor       Decimal        @db.Decimal(12, 2)
+  data        DateTime       @db.Date
+  forma       FormaPagamento
+  observacao  String?
+
+  pagamento Pagamento @relation(fields: [pagamentoId], references: [id], onDelete: Cascade)
+
+  @@index([pagamentoId])
+  @@map("recebimentos")
+}
+
+// ---------------------------------------------------------- usuários e leads
+
+model Usuario {
+  id        String       @id
+  nome      String
+  email     String       @unique
+  papel     PapelUsuario
+  ativo     Boolean
+  senhaHash String       @map("senha_hash")
+  criadoEm  DateTime     @map("criado_em") @db.Timestamptz(3)
+
+  @@map("usuarios")
+}
+
+model Lead {
+  id       String     @id
+  nome     String
+  email    String
+  telefone String     @db.VarChar(13)
+  mensagem String
+  origem   OrigemLead
+  imovelId String?    @map("imovel_id")
+  status   StatusLead
+  criadoEm DateTime   @map("criado_em") @db.Timestamptz(3)
+
+  imovel Imovel? @relation(fields: [imovelId], references: [id], onDelete: SetNull)
+
+  @@index([status])
+  @@map("leads")
+}

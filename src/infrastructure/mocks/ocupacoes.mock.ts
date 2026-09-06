@@ -1,0 +1,92 @@
+import type { Ocupacao } from "@/domain/entities";
+import { mesesAtras } from "./helpers";
+
+/**
+ * Histórico desenhado para exercitar os relatórios:
+ * o imóvel imv_04 passou por 3 ocupações, com vacância entre elas.
+ */
+export const ocupacoesMock: Ocupacao[] = [
+  {
+    id: "ocp_01",
+    imovelId: "imv_04",
+    inquilinoId: "inq_02",
+    dataEntrada: mesesAtras(58, 1),
+    dataSaida: mesesAtras(41, 28),
+    status: "encerrada",
+    valorAluguel: 3200,
+    diaVencimento: 5,
+    valorCaucao: 6400,
+    motivoSaida: "fim_contrato",
+    condicoesEntrega: "Imóvel devolvido pintado e sem pendências. Vistoria aprovada sem ressalvas.",
+    criadoEm: mesesAtras(58, 1),
+  },
+  {
+    id: "ocp_02",
+    imovelId: "imv_04",
+    inquilinoId: "inq_03",
+    dataEntrada: mesesAtras(37, 15),
+    dataSaida: mesesAtras(19, 30),
+    status: "encerrada",
+    valorAluguel: 3650,
+    diaVencimento: 10,
+    valorCaucao: 7300,
+    motivoSaida: "rescisao_inquilino",
+    condicoesEntrega:
+      "Rescisão antecipada por mudança de cidade. Multa proporcional quitada. Pequenos reparos na pintura descontados da caução.",
+    criadoEm: mesesAtras(37, 15),
+  },
+  {
+    id: "ocp_03",
+    imovelId: "imv_04",
+    inquilinoId: "inq_04",
+    dataEntrada: mesesAtras(15, 1),
+    dataSaida: null,
+    status: "ativa",
+    valorAluguel: 4100,
+    diaVencimento: 10,
+    valorCaucao: 8200,
+    observacoes: "Reajuste anual pelo IGP-M previsto para o aniversário do contrato.",
+    criadoEm: mesesAtras(15, 1),
+  },
+  {
+    id: "ocp_04",
+    imovelId: "imv_02",
+    inquilinoId: "inq_01",
+    dataEntrada: mesesAtras(24, 1),
+    dataSaida: null,
+    status: "ativa",
+    valorAluguel: 5800,
+    diaVencimento: 5,
+    valorCaucao: 11600,
+    observacoes: "Autorizada a manutenção de dois gatos conforme aditivo assinado.",
+    criadoEm: mesesAtras(24, 1),
+  },
+  {
+    id: "ocp_05",
+    imovelId: "imv_07",
+    inquilinoId: "inq_06",
+    dataEntrada: mesesAtras(20, 10),
+    dataSaida: null,
+    status: "ativa",
+    valorAluguel: 12000,
+    diaVencimento: 15,
+    valorCaucao: 36000,
+    observacoes: "Contrato atípico de 5 anos com garantia de fiança bancária.",
+    criadoEm: mesesAtras(20, 10),
+  },
+  {
+    id: "ocp_06",
+    imovelId: "imv_06",
+    inquilinoId: "inq_05",
+    dataEntrada: mesesAtras(42, 1),
+    dataSaida: mesesAtras(4, 30),
+    status: "encerrada",
+    valorAluguel: 2450,
+    diaVencimento: 8,
+    valorCaucao: 4900,
+    motivoSaida: "fim_contrato",
+    condicoesEntrega:
+      "Devolução com desgaste natural no piso da sala e pintura. Imóvel encaminhado para reforma antes de novo anúncio.",
+    criadoEm: mesesAtras(42, 1),
+  },
+];

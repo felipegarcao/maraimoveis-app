@@ -1,0 +1,41 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: mara-imoveis:latest
+    container_name: mara-imoveis
+    restart: unless-stopped
+
+    env_file: .env
+
+    # Só o loopback: quem publica na internet é o seu proxy reverso.
+    ports:
+      - "127.0.0.1:${PORTA_HOST:-3102}:3000"
+
+    # Fotos dos imóveis e PDFs dos contratos continuam em disco mesmo com o
+    # banco configurado — este volume guarda esses arquivos.
+    volumes:
+      - mara-arquivos:/app/dados
+
+    networks:
+      - padrao
+      - banco
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  mara-arquivos:
+
+networks:
+  padrao:
+  # Rede do compose onde o PostgreSQL já roda. Descubra o nome com:
+  #   docker inspect ffinance-app-db-1 -f '{{range $$k, $$v := .NetworkSettings.Networks}}{{$$k}}{{end}}'
+  # e ajuste REDE_BANCO no .env se for diferente.
+  banco:
+    external: true
+    name: ${REDE_BANCO:-ffinance-app_default}
