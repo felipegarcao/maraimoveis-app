@@ -1,4 +1,4 @@
-import { mkdir, unlink, writeFile } from "node:fs/promises";
+import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { ArquivoArmazenado, ArquivoUpload, StorageService } from "@/domain/services";
 import { gerarId, slugify } from "@/lib/utils";
@@ -37,6 +37,15 @@ export class LocalStorageService implements StorageService {
     await writeFile(join(destino, nomeFinal), conteudo);
 
     return { chave, url: this.urlPublica(chave), tamanhoBytes: conteudo.byteLength };
+  }
+
+  async ler(chave: string): Promise<Uint8Array | null> {
+    try {
+      return await readFile(join(RAIZ_UPLOADS, chave));
+    } catch {
+      // Arquivo apagado do volume por fora: quem chamou decide o que fazer.
+      return null;
+    }
   }
 
   async remover(chave: string): Promise<void> {

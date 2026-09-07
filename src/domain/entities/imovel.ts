@@ -27,7 +27,8 @@ export interface CaracteristicasImovel {
   readonly suites: number;
   readonly banheiros: number;
   readonly vagas: number;
-  readonly areaM2: number;
+  /** Opcional: nem todo imóvel do acervo tem a metragem levantada. */
+  readonly areaM2?: number;
   readonly mobiliado: boolean;
   readonly aceitaPet: boolean;
   readonly condominio: boolean;
@@ -36,7 +37,8 @@ export interface CaracteristicasImovel {
 export interface Imovel {
   readonly id: string;
   readonly titulo: string;
-  readonly descricao: string;
+  /** Opcional: imóvel pode ser cadastrado antes de o anúncio ser escrito. */
+  readonly descricao?: string;
   readonly tipo: TipoImovel;
   readonly status: StatusImovel;
   readonly endereco: Endereco;

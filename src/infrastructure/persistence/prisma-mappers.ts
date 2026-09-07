@@ -47,7 +47,7 @@ export function paraImovel(row: ImovelRow & { fotos: FotoRow[] }): Imovel {
   return {
     id: row.id,
     titulo: row.titulo,
-    descricao: row.descricao,
+    descricao: row.descricao ?? undefined,
     tipo: row.tipo,
     status: row.status,
     endereco: {
@@ -67,7 +67,7 @@ export function paraImovel(row: ImovelRow & { fotos: FotoRow[] }): Imovel {
       suites: row.suites,
       banheiros: row.banheiros,
       vagas: row.vagas,
-      areaM2: dinheiro(row.areaM2),
+      areaM2: row.areaM2 ? dinheiro(row.areaM2) : undefined,
       mobiliado: row.mobiliado,
       aceitaPet: row.aceitaPet,
       condominio: row.condominio,
@@ -91,6 +91,7 @@ export function paraInquilino(row: InquilinoRow): Inquilino {
     nome: row.nome,
     tipoDocumento: row.tipoDocumento,
     documento: row.documento,
+    rg: row.rg ?? undefined,
     email: row.email ?? undefined,
     telefone: row.telefone,
     profissao: row.profissao ?? undefined,

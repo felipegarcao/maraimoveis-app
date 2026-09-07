@@ -16,7 +16,7 @@ function textoDeBusca(dados: NovoImovel): string {
   return normalizarTexto(
     [
       dados.titulo,
-      dados.descricao,
+      dados.descricao ?? "",
       dados.endereco.logradouro,
       dados.endereco.bairro,
       dados.endereco.cidade,
@@ -27,7 +27,7 @@ function textoDeBusca(dados: NovoImovel): string {
 function colunasDoImovel(dados: NovoImovel) {
   return {
     titulo: dados.titulo,
-    descricao: dados.descricao,
+    descricao: dados.descricao ?? null,
     tipo: dados.tipo,
     status: dados.status,
     logradouro: dados.endereco.logradouro,
@@ -44,7 +44,7 @@ function colunasDoImovel(dados: NovoImovel) {
     suites: dados.caracteristicas.suites,
     banheiros: dados.caracteristicas.banheiros,
     vagas: dados.caracteristicas.vagas,
-    areaM2: dados.caracteristicas.areaM2,
+    areaM2: dados.caracteristicas.areaM2 ?? null,
     mobiliado: dados.caracteristicas.mobiliado,
     aceitaPet: dados.caracteristicas.aceitaPet,
     condominio: dados.caracteristicas.condominio,

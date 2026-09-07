@@ -139,17 +139,35 @@ chmod 600 .env
    O primeiro comando dá o valor do **host** em `DATABASE_URL`; o segundo, o
    valor de **`REDE_BANCO`**.
 
-2. Crie o usuário e o banco da aplicação:
+2. Descubra o **superusuário** desse Postgres. Ele **nem sempre se chama
+   `postgres`** — é o valor de `POSTGRES_USER` com que o container foi criado:
 
    ```bash
-   docker exec -it <container-postgres> psql -U postgres -c \
+   docker exec <container-postgres> env | grep POSTGRES
+   ```
+
+   > Se você usar um nome errado, o psql responde
+   > `FATAL: role "postgres" does not exist`. Use o `ffinance` que apareceu
+   > acima nos comandos do passo seguinte.
+
+3. Crie o usuário e o banco da aplicação (troque `<SUPERUSER>` pelo valor
+   encontrado):
+
+   ```bash
+   docker exec -it <container-postgres> psql -U <SUPERUSER> -c \
      "CREATE USER mara WITH PASSWORD '<senha-do-banco>';"
 
-   docker exec -it <container-postgres> psql -U postgres -c \
+   docker exec -it <container-postgres> psql -U <SUPERUSER> -c \
      "CREATE DATABASE mara_imoveis OWNER mara;"
    ```
 
-3. Ajuste `DATABASE_URL` e `REDE_BANCO` no `.env` com esses valores.
+4. Confirme que o novo usuário conecta:
+
+   ```bash
+   docker exec -it <container-postgres> psql -U mara -d mara_imoveis -c '\conninfo'
+   ```
+
+5. Ajuste `DATABASE_URL` e `REDE_BANCO` no `.env` com esses valores.
 
 ### Opção B — subir um PostgreSQL dedicado para a aplicação
 
@@ -392,6 +410,7 @@ Agendar backup diário às 3h (`crontab -e`):
 | `502 Bad Gateway` no nginx | Container fora do ar ou porta divergente | `docker compose ps`; confira se `PORTA_HOST` do `.env` bate com o `proxy_pass` |
 | Container reinicia em loop | Migration falhou (banco inacessível) | `docker compose logs app`; verifique `DATABASE_URL` e `REDE_BANCO` |
 | `network ... not found` no `up` | `REDE_BANCO` aponta para rede inexistente | `docker network ls` e corrija o `.env` |
+| `role "postgres" does not exist` | O superusuário do container tem outro nome | `docker exec <container-postgres> env \| grep POSTGRES` e use o `POSTGRES_USER` real |
 | Login não persiste | Acesso por HTTP puro | Conclua o passo 7 — o cookie é `secure` em produção |
 | `413 Request Entity Too Large` | `client_max_body_size` baixo | Deixe em `12M` no bloco `server` e recarregue o nginx |
 | Certbot falha na validação | DNS ainda não propagou ou porta 80 fechada | `dig +short maraimoveis.felipesyste.com.br`; libere a 80 |

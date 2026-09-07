@@ -29,6 +29,10 @@ import { ConsoleEmailService, ResendEmailService } from "./email/resend-email-se
 import { LocalStorageService } from "./storage/local-storage-service";
 import { ReactPdfContratoService } from "./pdf/react-pdf-contrato-service";
 import { ScryptHashSenhaService } from "./auth/scrypt-hash-service";
+import {
+  N8nWebhookContratoService,
+  WebhookContratoDesativado,
+} from "./webhook/n8n-webhook-service";
 
 /**
  * Composition root — o ÚNICO lugar que conhece implementações concretas.
@@ -40,6 +44,7 @@ export type Container = Dependencias;
 
 function criarContainer(): Container {
   const apiKeyResend = process.env.RESEND_API_KEY;
+  const urlWebhookContrato = process.env.N8N_WEBHOOK_CONTRATO_URL;
 
   /**
    * A persistência é escolhida aqui e em nenhum outro lugar: com `DATABASE_URL`
@@ -65,6 +70,9 @@ function criarContainer(): Container {
     sessao: new CookieSessionService(COOKIE_SESSAO_ADMIN),
     sessaoInquilino: new CookieSessionService(COOKIE_SESSAO_INQUILINO),
     pdf: new ReactPdfContratoService(),
+    webhookContrato: urlWebhookContrato
+      ? new N8nWebhookContratoService(urlWebhookContrato, process.env.N8N_WEBHOOK_TOKEN)
+      : new WebhookContratoDesativado(),
     hashSenha: new ScryptHashSenhaService(),
   };
 }

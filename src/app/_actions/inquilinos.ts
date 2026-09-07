@@ -17,6 +17,7 @@ export async function criarInquilino(entrada: unknown) {
     const inquilino = await casosDeUso.inquilinos.criar.executar({
       ...dados,
       telefone: dados.telefone.replace(/\D/g, ""),
+      rg: dados.rg || undefined,
       email: dados.email || undefined,
       profissao: dados.profissao || undefined,
       observacoes: dados.observacoes || undefined,
@@ -32,6 +33,7 @@ export async function editarInquilino(id: string, entrada: unknown) {
     const inquilino = await casosDeUso.inquilinos.editar.executar(id, {
       ...dados,
       telefone: dados.telefone.replace(/\D/g, ""),
+      rg: dados.rg || undefined,
       email: dados.email || undefined,
       profissao: dados.profissao || undefined,
       observacoes: dados.observacoes || undefined,

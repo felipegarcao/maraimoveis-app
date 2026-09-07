@@ -3,10 +3,14 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
-import { Download, FileDown, Pencil, Trash2 } from "lucide-react";
+import { Download, FileDown, Pencil, Send, Trash2 } from "lucide-react";
 import type { Contrato } from "@/domain/entities";
 import type { OcupacaoDetalhada } from "@/application/dtos";
-import { excluirContrato, gerarContratoPdf } from "@/app/_actions/contratos";
+import {
+  enviarContratoWebhook,
+  excluirContrato,
+  gerarContratoPdf,
+} from "@/app/_actions/contratos";
 import { Button, ConfirmDialog, classesBotao } from "@/presentation/components/ui";
 import { FormularioContrato } from "./formulario-contrato";
 
@@ -14,13 +18,17 @@ export function AcoesContrato({
   contrato,
   ocupacoes,
   compacto = false,
+  envioDisponivel = false,
 }: {
   contrato: Contrato;
   ocupacoes: OcupacaoDetalhada[];
   compacto?: boolean;
+  /** Sem webhook configurado no servidor não há para onde enviar: o botão some. */
+  envioDisponivel?: boolean;
 }) {
   const router = useRouter();
   const [gerando, setGerando] = useState(false);
+  const [enviando, setEnviando] = useState(false);
   const [editando, setEditando] = useState(false);
   const [confirmando, setConfirmando] = useState(false);
   const tamanho = compacto ? "sm" : "md";
@@ -38,6 +46,20 @@ export function AcoesContrato({
     toast.success(`PDF do contrato ${resultado.dados.numero} gerado.`);
     router.refresh();
     window.open(resultado.dados.url, "_blank", "noopener");
+  }
+
+  async function enviar() {
+    setEnviando(true);
+    const resultado = await enviarContratoWebhook(contrato.id);
+    setEnviando(false);
+
+    if (!resultado.sucesso) {
+      toast.error(resultado.erro);
+      return;
+    }
+
+    toast.success(`Contrato ${resultado.dados.numero} enviado para o fluxo do WhatsApp.`);
+    router.refresh();
   }
 
   async function confirmarExclusao() {
@@ -69,6 +91,13 @@ export function AcoesContrato({
           <FileDown aria-hidden className="size-4" />
           {contrato.arquivoPdfUrl ? "Regerar" : "Gerar PDF"}
         </Button>
+
+        {envioDisponivel ? (
+          <Button variante="secundario" tamanho={tamanho} onClick={enviar} carregando={enviando}>
+            <Send aria-hidden className="size-4" />
+            Enviar WhatsApp
+          </Button>
+        ) : null}
 
         <Button variante="secundario" tamanho={tamanho} onClick={() => setEditando(true)}>
           <Pencil aria-hidden className="size-4" />

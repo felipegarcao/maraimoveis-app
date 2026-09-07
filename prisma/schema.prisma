@@ -87,7 +87,8 @@ enum StatusLead {
 model Imovel {
   id        String       @id
   titulo    String
-  descricao String
+  /// Opcional: imóvel pode ser cadastrado antes de o anúncio ser escrito.
+  descricao String?
   tipo      TipoImovel
   status    StatusImovel
 
@@ -108,7 +109,8 @@ model Imovel {
   suites     Int
   banheiros  Int
   vagas      Int
-  areaM2     Decimal @map("area_m2") @db.Decimal(10, 2)
+  /// Opcional: parte do acervo não tem a metragem levantada.
+  areaM2     Decimal? @map("area_m2") @db.Decimal(10, 2)
   mobiliado  Boolean
   aceitaPet  Boolean @map("aceita_pet")
   condominio Boolean
@@ -149,6 +151,8 @@ model Inquilino {
   nome          String
   tipoDocumento TipoDocumento @map("tipo_documento")
   documento     String        @unique @db.VarChar(14)
+  /// RG acompanha o CPF/CNPJ no contrato de locação — não o substitui.
+  rg            String?       @db.VarChar(20)
   email         String?
   telefone      String        @db.VarChar(13)
   profissao     String?

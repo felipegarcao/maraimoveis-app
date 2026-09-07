@@ -96,6 +96,12 @@ export default async function PaginaDetalheInquilino({ params }: Props) {
                 <dt className="sr-only">Documento</dt>
                 <dd className="tabular-nums">{formatarCpfCnpj(inquilino.documento)}</dd>
               </div>
+              {inquilino.rg ? (
+                <div className="flex items-center gap-1.5">
+                  <dt className="text-slate-400">RG</dt>
+                  <dd className="tabular-nums">{inquilino.rg}</dd>
+                </div>
+              ) : null}
               <div className="flex items-center gap-1.5">
                 <dt><Phone aria-hidden className="size-3.5 text-slate-400" /><span className="sr-only">Telefone</span></dt>
                 <dd>{formatarTelefone(inquilino.telefone)}</dd>

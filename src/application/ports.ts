@@ -14,6 +14,7 @@ import type {
   HashSenhaService,
   SessionService,
   StorageService,
+  WebhookContratoService,
 } from "@/domain/services";
 import type { InquilinoSessao } from "@/domain/entities";
 
@@ -37,5 +38,7 @@ export interface Dependencias {
   /** Sessão do portal do inquilino — independente da do painel. */
   readonly sessaoInquilino: SessionService<InquilinoSessao>;
   readonly pdf: ContratoPdfService;
+  /** Envio do contrato para o fluxo do n8n. Desativado quando não há URL no .env. */
+  readonly webhookContrato: WebhookContratoService;
   readonly hashSenha: HashSenhaService;
 }

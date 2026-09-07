@@ -7,6 +7,11 @@ export interface Inquilino {
   readonly tipoDocumento: TipoDocumento;
   /** Apenas dígitos. */
   readonly documento: string;
+  /**
+   * RG, opcional e livre de formato — o contrato de locação pede RG **e** CPF
+   * da mesma pessoa, então ele não substitui `documento`.
+   */
+  readonly rg?: string;
   /** Opcional: nem todo inquilino tem ou quer informar e-mail. */
   readonly email?: string;
   /** Apenas dígitos, com DDD. */

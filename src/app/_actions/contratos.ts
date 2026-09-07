@@ -50,6 +50,20 @@ export async function gerarContratoPdf(id: string) {
   });
 }
 
+/**
+ * Dispara o contrato para o fluxo do n8n, que encaminha o PDF por WhatsApp.
+ * Gera o PDF antes, se ainda não existir — o arquivo enviado é sempre o mesmo
+ * que fica no painel.
+ */
+export async function enviarContratoWebhook(id: string) {
+  return executarSimples(async () => {
+    await exigirSessao();
+    const resultado = await casosDeUso.contratos.enviarPorWebhook.executar(id);
+    revalidar();
+    return resultado;
+  });
+}
+
 export async function excluirContrato(id: string) {
   return executarSimples(async () => {
     await exigirSessao();
