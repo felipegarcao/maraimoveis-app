@@ -22,15 +22,18 @@ import { FormularioContrato } from "./formulario-contrato";
 import { ModalAssinaturaContrato } from "./modal-assinatura-contrato";
 
 /**
- * Ação primária (Abrir/Gerar PDF) fica visível; o resto — assinatura, reenvio,
- * edição, exclusão — vai para um menu "⋮". Antes eram até 6 botões lado a
- * lado em cada linha da tabela; a lista ficava ilegível.
+ * Duas apresentações para as mesmas ações. `menu`: linha da tabela desktop —
+ * só a ação primária fica visível, o resto vai para o popover "⋮" (com 6
+ * botões lado a lado a linha ficava ilegível). Sem `menu` (padrão, usado nos
+ * cards do mobile): todas as ações como botões tocáveis — há espaço vertical
+ * de sobra no card, e um popover custa um toque a mais que não compensa ali.
  */
 export function AcoesContrato({
   contrato,
   ocupacoes,
   inquilino,
   compacto = false,
+  menu = false,
   envioDisponivel = false,
 }: {
   contrato: Contrato;
@@ -38,6 +41,8 @@ export function AcoesContrato({
   /** Necessário só para pré-preencher o telefone no modal de assinatura. */
   inquilino: ResumoInquilino;
   compacto?: boolean;
+  /** Ações secundárias atrás de um menu "⋮" — pensado para a linha da tabela. */
+  menu?: boolean;
   /** Sem webhook configurado no servidor não há para onde enviar: o item some. */
   envioDisponivel?: boolean;
 }) {
@@ -51,9 +56,8 @@ export function AcoesContrato({
 
   async function gerar() {
     setGerando(true);
-    // O botão de disparo pode estar dentro do menu, que já fechou quando o
-    // clique chega aqui — sem o toast, gerar/regerar ficaria sem nenhum
-    // feedback visível até o PDF abrir.
+    // No layout de menu o popover já fechou quando o clique chega aqui — sem
+    // o toast, gerar/regerar ficaria sem nenhum feedback visível até o PDF abrir.
     const idToast = toast.loading("Gerando PDF...");
     const resultado = await gerarContratoPdf(contrato.id);
     setGerando(false);
@@ -95,57 +99,96 @@ export function AcoesContrato({
     router.refresh();
   }
 
+  const abrirOuGerarPdf = contrato.arquivoPdfUrl ? (
+    <a
+      href={contrato.arquivoPdfUrl}
+      target="_blank"
+      rel="noopener noreferrer"
+      className={classesBotao("suave", tamanho)}
+    >
+      <Download aria-hidden className="size-4" />
+      Abrir PDF
+    </a>
+  ) : (
+    <Button variante="secundario" tamanho={tamanho} onClick={gerar} carregando={gerando}>
+      <FileDown aria-hidden className="size-4" />
+      Gerar PDF
+    </Button>
+  );
+
   return (
     <>
-      <div className="flex items-center gap-2">
-        {contrato.arquivoPdfUrl ? (
-          <a
-            href={contrato.arquivoPdfUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className={classesBotao("suave", tamanho)}
-          >
-            <Download aria-hidden className="size-4" />
-            Abrir PDF
-          </a>
-        ) : (
-          <Button variante="secundario" tamanho={tamanho} onClick={gerar} carregando={gerando}>
-            <FileDown aria-hidden className="size-4" />
-            Gerar PDF
-          </Button>
-        )}
+      {menu ? (
+        <div className="flex items-center gap-2">
+          {abrirOuGerarPdf}
 
-        <MenuAcoes>
-          {contrato.arquivoPdfUrl ? (
-            <ItemMenu icone={FileDown} carregando={gerando} onClick={gerar}>
-              Regerar PDF
+          <MenuAcoes>
+            {contrato.arquivoPdfUrl ? (
+              <ItemMenu icone={FileDown} carregando={gerando} onClick={gerar}>
+                Regerar PDF
+              </ItemMenu>
+            ) : null}
+
+            <ItemMenu icone={FileSignature} onClick={() => setAssinando(true)}>
+              Assinatura
             </ItemMenu>
-          ) : null}
 
-          <ItemMenu icone={FileSignature} onClick={() => setAssinando(true)}>
+            {envioDisponivel ? (
+              <ItemMenu icone={Send} carregando={enviando} onClick={enviar}>
+                Enviar WhatsApp
+              </ItemMenu>
+            ) : null}
+
+            <ItemMenu icone={Pencil} onClick={() => setEditando(true)}>
+              Editar
+            </ItemMenu>
+
+            {contrato.status !== "vigente" ? (
+              <>
+                <div role="separator" className="my-1 border-t border-line" />
+                <ItemMenu icone={Trash2} tom="perigo" onClick={() => setConfirmando(true)}>
+                  Excluir
+                </ItemMenu>
+              </>
+            ) : null}
+          </MenuAcoes>
+        </div>
+      ) : (
+        <div className="flex flex-wrap gap-2">
+          {abrirOuGerarPdf}
+
+          <Button variante="secundario" tamanho={tamanho} onClick={() => setAssinando(true)}>
+            <FileSignature aria-hidden className="size-4" />
             Assinatura
-          </ItemMenu>
+          </Button>
+
+          {contrato.arquivoPdfUrl ? (
+            <Button variante="secundario" tamanho={tamanho} onClick={gerar} carregando={gerando}>
+              <FileDown aria-hidden className="size-4" />
+              Regerar
+            </Button>
+          ) : null}
 
           {envioDisponivel ? (
-            <ItemMenu icone={Send} carregando={enviando} onClick={enviar}>
+            <Button variante="secundario" tamanho={tamanho} onClick={enviar} carregando={enviando}>
+              <Send aria-hidden className="size-4" />
               Enviar WhatsApp
-            </ItemMenu>
+            </Button>
           ) : null}
 
-          <ItemMenu icone={Pencil} onClick={() => setEditando(true)}>
-            Editar
-          </ItemMenu>
+          <Button variante="secundario" tamanho={tamanho} onClick={() => setEditando(true)}>
+            <Pencil aria-hidden className="size-4" />
+            <span className={compacto ? "sr-only" : undefined}>Editar</span>
+          </Button>
 
           {contrato.status !== "vigente" ? (
-            <>
-              <div role="separator" className="my-1 border-t border-line" />
-              <ItemMenu icone={Trash2} tom="perigo" onClick={() => setConfirmando(true)}>
-                Excluir
-              </ItemMenu>
-            </>
+            <Button variante="perigoSuave" tamanho={tamanho} onClick={() => setConfirmando(true)}>
+              <Trash2 aria-hidden className="size-4" />
+              <span className={compacto ? "sr-only" : undefined}>Excluir</span>
+            </Button>
           ) : null}
-        </MenuAcoes>
-      </div>
+        </div>
+      )}
 
       {editando ? (
         <FormularioContrato

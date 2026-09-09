@@ -207,6 +207,7 @@ export default async function PaginaContratos({ searchParams }: Props) {
                             inquilino={inquilino}
                             envioDisponivel={envioDisponivel}
                             compacto
+                            menu
                           />
                         </div>
                       </Td>
