@@ -6,6 +6,7 @@ import { ExternalLink, LogOut, UserRound } from "lucide-react";
 import type { UsuarioSessao } from "@/domain/entities";
 import { ROTULOS_PAPEL } from "@/domain/entities";
 import { sair } from "@/app/_actions/auth";
+import { ThemeToggle } from "@/presentation/components/ui";
 import { cn } from "@/lib/utils";
 
 export function HeaderAdmin({ usuario, titulo }: { usuario: UsuarioSessao; titulo: string }) {
@@ -41,6 +42,8 @@ export function HeaderAdmin({ usuario, titulo }: { usuario: UsuarioSessao; titul
       <h1 className="truncate text-base font-semibold text-slate-900 sm:text-lg">{titulo}</h1>
 
       <div className="flex items-center gap-2">
+        <ThemeToggle />
+
         <Link
           href="/"
           target="_blank"

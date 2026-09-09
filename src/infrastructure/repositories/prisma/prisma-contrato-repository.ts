@@ -54,6 +54,12 @@ export class PrismaContratoRepository implements ContratoRepository {
         clausulasAdicionais: c.clausulasAdicionais ?? null,
         arquivoPdfUrl: dados.arquivoPdfUrl,
         dataGeracao: dados.dataGeracao ? new Date(dados.dataGeracao) : null,
+        statusAssinatura: dados.statusAssinatura,
+        assinaturaTelefone: dados.assinaturaTelefone,
+        assinaturaEnviadaEm: dados.assinaturaEnviadaEm ? new Date(dados.assinaturaEnviadaEm) : null,
+        assinaturaOrigem: dados.assinaturaOrigem,
+        arquivoAssinadoUrl: dados.arquivoAssinadoUrl,
+        assinadoEm: dados.assinadoEm ? new Date(dados.assinadoEm) : null,
         criadoEm: new Date(),
       },
     });
@@ -71,6 +77,20 @@ export class PrismaContratoRepository implements ContratoRepository {
           ...(dados.arquivoPdfUrl !== undefined && { arquivoPdfUrl: dados.arquivoPdfUrl }),
           ...(dados.dataGeracao !== undefined && {
             dataGeracao: dados.dataGeracao ? new Date(dados.dataGeracao) : null,
+          }),
+          ...(dados.statusAssinatura !== undefined && { statusAssinatura: dados.statusAssinatura }),
+          ...(dados.assinaturaTelefone !== undefined && {
+            assinaturaTelefone: dados.assinaturaTelefone,
+          }),
+          ...(dados.assinaturaEnviadaEm !== undefined && {
+            assinaturaEnviadaEm: dados.assinaturaEnviadaEm ? new Date(dados.assinaturaEnviadaEm) : null,
+          }),
+          ...(dados.assinaturaOrigem !== undefined && { assinaturaOrigem: dados.assinaturaOrigem }),
+          ...(dados.arquivoAssinadoUrl !== undefined && {
+            arquivoAssinadoUrl: dados.arquivoAssinadoUrl,
+          }),
+          ...(dados.assinadoEm !== undefined && {
+            assinadoEm: dados.assinadoEm ? new Date(dados.assinadoEm) : null,
           }),
           ...(c && {
             valorAluguel: c.valorAluguel,

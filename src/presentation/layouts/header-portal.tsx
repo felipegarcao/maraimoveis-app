@@ -6,6 +6,7 @@ import { Building2, KeyRound, LogOut } from "lucide-react";
 import type { InquilinoSessao } from "@/domain/entities";
 import { sairPortal } from "@/app/_actions/portal";
 import { siteConfig } from "@/lib/config";
+import { ThemeToggle } from "@/presentation/components/ui";
 import { cn } from "@/lib/utils";
 
 export function HeaderPortal({ inquilino }: { inquilino: InquilinoSessao }) {
@@ -35,6 +36,8 @@ export function HeaderPortal({ inquilino }: { inquilino: InquilinoSessao }) {
         </Link>
 
         <div className="flex items-center gap-1">
+          <ThemeToggle />
+
           <Link
             href="/portal/senha"
             aria-current={caminho === "/portal/senha" ? "page" : undefined}

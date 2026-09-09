@@ -43,22 +43,6 @@ export default function PaginaLogin() {
             </div>
           </CardBody>
         </Card>
-
-        <div className="mt-4 rounded-card border border-dashed border-brand-200 bg-brand-50/50 p-4">
-          <p className="text-xs font-semibold uppercase tracking-wide text-brand-700">
-            Acesso de demonstração
-          </p>
-          <dl className="mt-2 space-y-1 text-xs text-slate-600">
-            <div className="flex gap-2">
-              <dt className="w-20 shrink-0 text-slate-500">Admin</dt>
-              <dd className="font-mono">admin@maraimoveis.com.br · admin123</dd>
-            </div>
-            <div className="flex gap-2">
-              <dt className="w-20 shrink-0 text-slate-500">Gestor</dt>
-              <dd className="font-mono">gestor@maraimoveis.com.br · gestor123</dd>
-            </div>
-          </dl>
-        </div>
       </div>
     </div>
   );

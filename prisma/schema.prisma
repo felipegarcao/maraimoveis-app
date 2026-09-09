@@ -57,6 +57,19 @@ enum StatusContrato {
   encerrado
 }
 
+enum StatusAssinatura {
+  pendente
+  enviada
+  assinada
+}
+
+/// Como o documento assinado chegou: pelo próprio fluxo digital (WhatsApp/n8n)
+/// ou importado manualmente pelo gestor.
+enum OrigemAssinatura {
+  digital
+  sistema
+}
+
 enum FormaPagamento {
   pix
   transferencia
@@ -229,7 +242,15 @@ model Contrato {
 
   arquivoPdfUrl String?   @map("arquivo_pdf_url")
   dataGeracao   DateTime? @map("data_geracao") @db.Timestamptz(3)
-  criadoEm      DateTime  @map("criado_em")    @db.Timestamptz(3)
+
+  statusAssinatura    StatusAssinatura  @default(pendente) @map("status_assinatura")
+  assinaturaTelefone  String?           @map("assinatura_telefone")
+  assinaturaEnviadaEm DateTime?         @map("assinatura_enviada_em") @db.Timestamptz(3)
+  assinaturaOrigem    OrigemAssinatura? @map("assinatura_origem")
+  arquivoAssinadoUrl  String?           @map("arquivo_assinado_url")
+  assinadoEm          DateTime?         @map("assinado_em") @db.Timestamptz(3)
+
+  criadoEm DateTime @map("criado_em") @db.Timestamptz(3)
 
   ocupacao Ocupacao @relation(fields: [ocupacaoId], references: [id], onDelete: Cascade)
 

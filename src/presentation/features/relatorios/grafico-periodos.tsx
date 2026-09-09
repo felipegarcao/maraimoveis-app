@@ -52,7 +52,7 @@ export function GraficoPeriodos({
               if (!active || !payload?.length) return null;
               const ponto = payload[0].payload as (typeof dados)[number];
               return (
-                <div className="rounded-lg border border-line bg-white px-3 py-2 text-xs shadow-lift">
+                <div className="rounded-lg border border-line bg-surface px-3 py-2 text-xs shadow-lift">
                   <p className="font-semibold text-slate-900">{ponto.inquilino}</p>
                   <p className="mt-0.5 text-slate-500">
                     {formatarData(ponto.inicio)} — {ponto.fim ? formatarData(ponto.fim) : "atual"}

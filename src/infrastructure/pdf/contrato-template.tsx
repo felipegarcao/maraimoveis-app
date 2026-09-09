@@ -106,10 +106,12 @@ function Qualificacao({
   rotulo,
   parte,
   rotuloDocumento,
+  mostrarTelefone = true,
 }: {
   rotulo: string;
   parte: ParteContrato;
   rotuloDocumento: string;
+  mostrarTelefone?: boolean;
 }) {
   return (
     <View style={estilos.parte} wrap={false}>
@@ -119,7 +121,7 @@ function Qualificacao({
       <Dado rotulo="RG" valor={parte.rg} />
       <Dado rotulo={rotuloDocumento} valor={parte.documento} />
       <Dado rotulo="Endereço" valor={parte.endereco} />
-      <Dado rotulo="Telefone" valor={parte.telefone} />
+      {mostrarTelefone ? <Dado rotulo="Telefone" valor={parte.telefone} /> : null}
     </View>
   );
 }
@@ -208,10 +210,10 @@ export function ContratoPdfDocument({ dados }: { dados: DadosContratoPdf }) {
         </Text>
 
         <Qualificacao rotulo={LOCADOR} parte={locador} rotuloDocumento={documentoLocador} />
-        <Qualificacao rotulo="Locatário" parte={locatario} rotuloDocumento="CPF" />
+        <Qualificacao rotulo="Locatário" parte={locatario} rotuloDocumento="CPF" mostrarTelefone={false} />
 
         <Clausula titulo="Cláusula 1 — Objeto">
-          {`${artigo} ${LOCADOR} dá em locação ao LOCATÁRIO o imóvel ${tipoContrato} situado na ${imovel.enderecoCompleto}${imovel.areaM2 ? `, com área de ${imovel.areaM2.toLocaleString("pt-BR")} m²` : ""}, exclusivamente para ${finalidade}.`}
+          {`${artigo} ${LOCADOR} dá em locação ao LOCATÁRIO o imóvel ${tipoContrato} situado na ${imovel.enderecoCompleto}, exclusivamente para ${finalidade}.`}
         </Clausula>
 
         <Clausula titulo="Cláusula 2 — Prazo">

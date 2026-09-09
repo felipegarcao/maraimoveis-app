@@ -138,6 +138,12 @@ export function paraContrato(row: ContratoRow): Contrato {
     },
     arquivoPdfUrl: row.arquivoPdfUrl,
     dataGeracao: row.dataGeracao ? instante(row.dataGeracao) : null,
+    statusAssinatura: row.statusAssinatura,
+    assinaturaTelefone: row.assinaturaTelefone,
+    assinaturaEnviadaEm: row.assinaturaEnviadaEm ? instante(row.assinaturaEnviadaEm) : null,
+    assinaturaOrigem: row.assinaturaOrigem,
+    arquivoAssinadoUrl: row.arquivoAssinadoUrl,
+    assinadoEm: row.assinadoEm ? instante(row.assinadoEm) : null,
     criadoEm: instante(row.criadoEm),
   };
 }
