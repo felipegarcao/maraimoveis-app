@@ -11,10 +11,21 @@ import {
   excluirContrato,
   gerarContratoPdf,
 } from "@/app/_actions/contratos";
-import { Button, ConfirmDialog, classesBotao } from "@/presentation/components/ui";
+import {
+  Button,
+  ConfirmDialog,
+  ItemMenu,
+  MenuAcoes,
+  classesBotao,
+} from "@/presentation/components/ui";
 import { FormularioContrato } from "./formulario-contrato";
 import { ModalAssinaturaContrato } from "./modal-assinatura-contrato";
 
+/**
+ * Ação primária (Abrir/Gerar PDF) fica visível; o resto — assinatura, reenvio,
+ * edição, exclusão — vai para um menu "⋮". Antes eram até 6 botões lado a
+ * lado em cada linha da tabela; a lista ficava ilegível.
+ */
 export function AcoesContrato({
   contrato,
   ocupacoes,
@@ -27,7 +38,7 @@ export function AcoesContrato({
   /** Necessário só para pré-preencher o telefone no modal de assinatura. */
   inquilino: ResumoInquilino;
   compacto?: boolean;
-  /** Sem webhook configurado no servidor não há para onde enviar: o botão some. */
+  /** Sem webhook configurado no servidor não há para onde enviar: o item some. */
   envioDisponivel?: boolean;
 }) {
   const router = useRouter();
@@ -40,8 +51,13 @@ export function AcoesContrato({
 
   async function gerar() {
     setGerando(true);
+    // O botão de disparo pode estar dentro do menu, que já fechou quando o
+    // clique chega aqui — sem o toast, gerar/regerar ficaria sem nenhum
+    // feedback visível até o PDF abrir.
+    const idToast = toast.loading("Gerando PDF...");
     const resultado = await gerarContratoPdf(contrato.id);
     setGerando(false);
+    toast.dismiss(idToast);
 
     if (!resultado.sucesso) {
       toast.error(resultado.erro);
@@ -55,8 +71,10 @@ export function AcoesContrato({
 
   async function enviar() {
     setEnviando(true);
+    const idToast = toast.loading("Enviando para o WhatsApp...");
     const resultado = await enviarContratoWebhook(contrato.id);
     setEnviando(false);
+    toast.dismiss(idToast);
 
     if (!resultado.sucesso) {
       toast.error(resultado.erro);
@@ -79,7 +97,7 @@ export function AcoesContrato({
 
   return (
     <>
-      <div className="flex flex-wrap gap-2">
+      <div className="flex items-center gap-2">
         {contrato.arquivoPdfUrl ? (
           <a
             href={contrato.arquivoPdfUrl}
@@ -90,36 +108,43 @@ export function AcoesContrato({
             <Download aria-hidden className="size-4" />
             Abrir PDF
           </a>
-        ) : null}
-
-        <Button variante="secundario" tamanho={tamanho} onClick={() => setAssinando(true)}>
-          <FileSignature aria-hidden className="size-4" />
-          Assinatura
-        </Button>
-
-        <Button variante="secundario" tamanho={tamanho} onClick={gerar} carregando={gerando}>
-          <FileDown aria-hidden className="size-4" />
-          {contrato.arquivoPdfUrl ? "Regerar" : "Gerar PDF"}
-        </Button>
-
-        {envioDisponivel ? (
-          <Button variante="secundario" tamanho={tamanho} onClick={enviar} carregando={enviando}>
-            <Send aria-hidden className="size-4" />
-            Enviar WhatsApp
+        ) : (
+          <Button variante="secundario" tamanho={tamanho} onClick={gerar} carregando={gerando}>
+            <FileDown aria-hidden className="size-4" />
+            Gerar PDF
           </Button>
-        ) : null}
+        )}
 
-        <Button variante="secundario" tamanho={tamanho} onClick={() => setEditando(true)}>
-          <Pencil aria-hidden className="size-4" />
-          <span className={compacto ? "sr-only" : undefined}>Editar</span>
-        </Button>
+        <MenuAcoes>
+          {contrato.arquivoPdfUrl ? (
+            <ItemMenu icone={FileDown} carregando={gerando} onClick={gerar}>
+              Regerar PDF
+            </ItemMenu>
+          ) : null}
 
-        {contrato.status !== "vigente" ? (
-          <Button variante="perigoSuave" tamanho={tamanho} onClick={() => setConfirmando(true)}>
-            <Trash2 aria-hidden className="size-4" />
-            <span className={compacto ? "sr-only" : undefined}>Excluir</span>
-          </Button>
-        ) : null}
+          <ItemMenu icone={FileSignature} onClick={() => setAssinando(true)}>
+            Assinatura
+          </ItemMenu>
+
+          {envioDisponivel ? (
+            <ItemMenu icone={Send} carregando={enviando} onClick={enviar}>
+              Enviar WhatsApp
+            </ItemMenu>
+          ) : null}
+
+          <ItemMenu icone={Pencil} onClick={() => setEditando(true)}>
+            Editar
+          </ItemMenu>
+
+          {contrato.status !== "vigente" ? (
+            <>
+              <div role="separator" className="my-1 border-t border-line" />
+              <ItemMenu icone={Trash2} tom="perigo" onClick={() => setConfirmando(true)}>
+                Excluir
+              </ItemMenu>
+            </>
+          ) : null}
+        </MenuAcoes>
       </div>
 
       {editando ? (
