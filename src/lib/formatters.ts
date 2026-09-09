@@ -51,7 +51,9 @@ export function formatarTempoRelativo(valor: string | Date): string {
   });
 }
 
-export function formatarArea(metrosQuadrados: number): string {
+/** Área ausente vira travessão: metragem é opcional no cadastro. */
+export function formatarArea(metrosQuadrados?: number): string {
+  if (!metrosQuadrados) return "—";
   return `${metrosQuadrados.toLocaleString("pt-BR")} m²`;
 }
 

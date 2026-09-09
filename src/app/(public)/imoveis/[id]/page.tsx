@@ -38,16 +38,21 @@ async function carregar(id: string) {
   }
 }
 
+/** Sem descrição cadastrada, o endereço é o melhor resumo disponível. */
+function resumo(imovel: Imovel): string {
+  return (imovel.descricao || Endereco.completo(imovel.endereco)).slice(0, 155);
+}
+
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const imovel = await carregar((await params).id);
   if (!imovel) return { title: "Imóvel não encontrado" };
 
   return {
     title: imovel.titulo,
-    description: imovel.descricao.slice(0, 155),
+    description: resumo(imovel),
     openGraph: {
       title: imovel.titulo,
-      description: imovel.descricao.slice(0, 155),
+      description: resumo(imovel),
       images: Imovel.fotoCapa(imovel) ? [{ url: Imovel.fotoCapa(imovel)!.url }] : undefined,
     },
   };
@@ -136,14 +141,16 @@ export default async function PaginaImovel({ params }: Props) {
             ) : null}
           </section>
 
-          <section aria-labelledby="descricao" className="mt-8">
-            <h2 id="descricao" className="text-lg font-semibold text-slate-900">
-              Sobre o imóvel
-            </h2>
-            <p className="mt-3 whitespace-pre-line text-[15px] leading-relaxed text-slate-600">
-              {imovel.descricao}
-            </p>
-          </section>
+          {imovel.descricao ? (
+            <section aria-labelledby="descricao" className="mt-8">
+              <h2 id="descricao" className="text-lg font-semibold text-slate-900">
+                Sobre o imóvel
+              </h2>
+              <p className="mt-3 whitespace-pre-line text-[15px] leading-relaxed text-slate-600">
+                {imovel.descricao}
+              </p>
+            </section>
+          ) : null}
 
           <section aria-labelledby="contato-imovel" className="mt-10 lg:hidden">
             <h2 id="contato-imovel" className="text-lg font-semibold text-slate-900">

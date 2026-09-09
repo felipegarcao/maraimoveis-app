@@ -13,7 +13,7 @@ import { paraInquilino } from "../../persistence/prisma-mappers";
 
 function textoDeBusca(dados: NovoInquilino): string {
   return normalizarTexto(
-    [dados.nome, dados.email ?? "", dados.documento, dados.telefone].join(" "),
+    [dados.nome, dados.email ?? "", dados.documento, dados.rg ?? "", dados.telefone].join(" "),
   );
 }
 
@@ -51,6 +51,7 @@ export class PrismaInquilinoRepository implements InquilinoRepository {
         nome: dados.nome,
         tipoDocumento: dados.tipoDocumento,
         documento: apenasDigitos(dados.documento),
+        rg: dados.rg ?? null,
         email: dados.email ?? null,
         telefone: dados.telefone,
         profissao: dados.profissao ?? null,
@@ -72,6 +73,7 @@ export class PrismaInquilinoRepository implements InquilinoRepository {
       nome: dados.nome ?? atual.nome,
       tipoDocumento: dados.tipoDocumento ?? atual.tipoDocumento,
       documento: dados.documento ?? atual.documento,
+      rg: dados.rg ?? atual.rg,
       email: dados.email ?? atual.email,
       telefone: dados.telefone ?? atual.telefone,
       profissao: dados.profissao ?? atual.profissao,
@@ -85,6 +87,7 @@ export class PrismaInquilinoRepository implements InquilinoRepository {
         nome: completo.nome,
         tipoDocumento: completo.tipoDocumento,
         documento: apenasDigitos(completo.documento),
+        rg: dados.rg !== undefined ? (dados.rg ?? null) : undefined,
         // `email` cai para null quando o campo é limpo no formulário.
         email: dados.email !== undefined ? (dados.email ?? null) : undefined,
         telefone: completo.telefone,

@@ -30,6 +30,14 @@ export function criarCasosDeUso(d: Dependencias) {
     contratos: d.contratos,
     pagamentos: d.pagamentos,
   };
+  const gerarPdf = new Contratos.GerarContratoPdf(
+    d.contratos,
+    d.ocupacoes,
+    d.imoveis,
+    d.inquilinos,
+    d.pdf,
+    d.storage,
+  );
   const fontesFinanceiro = {
     pagamentos: d.pagamentos,
     ocupacoes: d.ocupacoes,
@@ -74,15 +82,19 @@ export function criarCasosDeUso(d: Dependencias) {
       obter: new Contratos.ObterContrato(d.contratos, d.ocupacoes, d.imoveis, d.inquilinos),
       criar: new Contratos.CriarContrato(d.contratos, d.ocupacoes),
       editar: new Contratos.EditarContrato(d.contratos),
-      gerarPdf: new Contratos.GerarContratoPdf(
+      gerarPdf,
+      enviarPorWebhook: new Contratos.EnviarContratoPorWebhook(
         d.contratos,
         d.ocupacoes,
         d.imoveis,
         d.inquilinos,
-        d.pdf,
         d.storage,
+        d.webhookContrato,
+        gerarPdf,
       ),
       excluir: new Contratos.ExcluirContrato(d.contratos, d.storage),
+      /** A tela só oferece o envio quando há webhook configurado no servidor. */
+      envioDisponivel: () => d.webhookContrato.configurado(),
     },
     financeiro: {
       listarCobrancas: new Financeiro.ListarCobrancas(fontesFinanceiro),

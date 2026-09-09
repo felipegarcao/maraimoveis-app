@@ -136,9 +136,11 @@ export default async function PaginaDetalheImovel({ params }: Props) {
                 ))}
               </dl>
 
-              <p className="mt-4 whitespace-pre-line border-t border-line pt-4 text-sm leading-relaxed text-slate-600">
-                {imovel.descricao}
-              </p>
+              {imovel.descricao ? (
+                <p className="mt-4 whitespace-pre-line border-t border-line pt-4 text-sm leading-relaxed text-slate-600">
+                  {imovel.descricao}
+                </p>
+              ) : null}
 
               {imovel.fotos.length > 1 ? (
                 <ul className="no-scrollbar mt-4 flex gap-2 overflow-x-auto border-t border-line pt-4">

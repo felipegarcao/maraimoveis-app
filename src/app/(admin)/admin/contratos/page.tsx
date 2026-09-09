@@ -45,6 +45,8 @@ export default async function PaginaContratos({ searchParams }: Props) {
     casosDeUso.ocupacoes.listar.executar(),
   ]);
 
+  const envioDisponivel = casosDeUso.contratos.envioDisponivel();
+
   const semContrato = ocupacoes.filter(
     (o) => o.ocupacao.status === "ativa" && o.contrato === null,
   );
@@ -129,7 +131,12 @@ export default async function PaginaContratos({ searchParams }: Props) {
                     {formatarMoeda(contrato.condicoes.valorAluguel)}
                   </p>
                   <div className="mt-3 border-t border-line pt-3">
-                    <AcoesContrato contrato={contrato} ocupacoes={ocupacoes} compacto />
+                    <AcoesContrato
+                      contrato={contrato}
+                      ocupacoes={ocupacoes}
+                      envioDisponivel={envioDisponivel}
+                      compacto
+                    />
                   </div>
                 </Card>
               </li>
@@ -187,7 +194,12 @@ export default async function PaginaContratos({ searchParams }: Props) {
                       <Td><StatusContratoBadge status={contrato.status} /></Td>
                       <Td>
                         <div className="flex justify-end">
-                          <AcoesContrato contrato={contrato} ocupacoes={ocupacoes} compacto />
+                          <AcoesContrato
+                      contrato={contrato}
+                      ocupacoes={ocupacoes}
+                      envioDisponivel={envioDisponivel}
+                      compacto
+                    />
                         </div>
                       </Td>
                     </Tr>

@@ -20,6 +20,18 @@ const dinheiro = (rotulo: string) =>
     .min(0, `${rotulo} não pode ser negativo.`)
     .max(9_999_999, `${rotulo} parece alto demais. Confira o valor.`);
 
+/**
+ * Número que o formulário pode deixar em branco. O campo entrega `undefined`
+ * (via `setValueAs`) em vez de "": `z.coerce.number()` leria "" como 0, e o
+ * cadastro gravaria "0 m²" onde o certo é "não informado".
+ */
+const numeroOpcional = (min: number, max: number, rotulo: string) =>
+  z.coerce
+    .number({ invalid_type_error: `Informe ${rotulo} em números.` })
+    .min(min, `${rotulo} deve ser maior que ${min - 1}.`)
+    .max(max, `${rotulo} parece alto demais. Confira o valor.`)
+    .optional();
+
 const dataISO = z
   .string()
   .regex(/^\d{4}-\d{2}-\d{2}$/, "Informe uma data válida.");
@@ -93,7 +105,8 @@ export const fotoSchema = z.object({
 
 export const imovelSchema = z.object({
   titulo: z.string().trim().min(8, "O título deve ter pelo menos 8 caracteres.").max(120),
-  descricao: z.string().trim().min(30, "Descreva o imóvel com pelo menos 30 caracteres.").max(4000),
+  // Opcional: o cadastro não trava por falta de texto de anúncio.
+  descricao: z.string().trim().max(4000).optional().or(z.literal("")),
   tipo: z.enum(TIPOS_IMOVEL),
   status: z.enum(STATUS_IMOVEL),
   endereco: z.object({
@@ -116,7 +129,8 @@ export const imovelSchema = z.object({
     suites: z.coerce.number().int().min(0).max(30),
     banheiros: z.coerce.number().int().min(0).max(30),
     vagas: z.coerce.number().int().min(0).max(50),
-    areaM2: z.coerce.number().min(1, "Informe a área em m².").max(100000),
+    // Opcional: parte do acervo não tem a metragem levantada.
+    areaM2: numeroOpcional(1, 100000, "a área em m²"),
     mobiliado: z.coerce.boolean(),
     aceitaPet: z.coerce.boolean(),
     condominio: z.coerce.boolean(),
@@ -136,6 +150,8 @@ export const inquilinoSchema = z
     nome: z.string().trim().min(3, "Informe o nome completo.").max(140),
     tipoDocumento: z.enum(TIPOS_DOCUMENTO),
     documento: z.string().transform((v) => v.replace(/\D/g, "")),
+    // RG acompanha o CPF/CNPJ (é assim que ele aparece no contrato), não o substitui.
+    rg: z.string().trim().max(20, "RG muito longo.").optional().or(z.literal("")),
     // O contato obrigatório é o telefone; e-mail é complemento.
     email: z.string().trim().email("Informe um e-mail válido.").optional().or(z.literal("")),
     telefone,

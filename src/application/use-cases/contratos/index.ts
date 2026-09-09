@@ -1,4 +1,4 @@
-import type { Contrato, CondicoesContrato } from "@/domain/entities";
+import type { Contrato, CondicoesContrato, Imovel, Inquilino } from "@/domain/entities";
 import { Endereco } from "@/domain/value-objects";
 import { RecursoNaoEncontrado, RegraDeNegocioViolada } from "@/domain/errors";
 import type {
@@ -8,12 +8,18 @@ import type {
   InquilinoRepository,
   OcupacaoRepository,
 } from "@/domain/repositories";
-import type { ContratoPdfService, StorageService } from "@/domain/services";
+import type {
+  ContratoPdfService,
+  DadosContratoPdf,
+  StorageService,
+  WebhookContratoService,
+} from "@/domain/services";
 import type { ContratoDetalhado } from "@/application/dtos";
 import { paraResumoImovel, paraResumoInquilino } from "@/application/mappers";
 import { ROTULOS_TIPO_IMOVEL } from "@/domain/entities";
-import { siteConfig } from "@/lib/config";
+import { locadorConfig } from "@/lib/config";
 import { formatarCpfCnpj, formatarTelefone } from "@/lib/formatters";
+import { apenasDigitos } from "@/lib/utils";
 import { addMonths, format } from "date-fns";
 
 /** A URL pública emitida pelo storage carrega a chave no final do caminho. */
@@ -21,12 +27,45 @@ function chaveDeUrl(url: string): string {
   return url.replace(/^\/api\/arquivos\//, "");
 }
 
-/** Dados do locador exibidos no contrato. Viriam de uma tabela de configuração no futuro. */
-const LOCADOR = {
-  nome: "Mara Siqueira Administração de Imóveis ME",
-  documento: "12.345.678/0001-90",
-  endereco: siteConfig.endereco,
-};
+/** Imóvel comercial muda o título do contrato e a destinação declarada. */
+const TIPOS_COMERCIAIS = ["comercial", "galpao"];
+
+/** Nome do arquivo do PDF — o mesmo no storage e no anexo enviado ao n8n. */
+function nomeArquivoPdf(numero: string): string {
+  return `contrato-${numero.replace(/\//g, "-")}.pdf`;
+}
+
+/** Telefone pronto para o fluxo externo: só dígitos, sempre com o DDI 55. */
+function comDdi(telefone: string): string {
+  const digitos = apenasDigitos(telefone);
+  return digitos.startsWith("55") ? digitos : `55${digitos}`;
+}
+
+/** Contrato com a ocupação já resolvida em imóvel e inquilino. */
+async function carregarContrato(
+  contratoId: string,
+  fontes: {
+    contratos: ContratoRepository;
+    ocupacoes: OcupacaoRepository;
+    imoveis: ImovelRepository;
+    inquilinos: InquilinoRepository;
+  },
+): Promise<{ contrato: Contrato; imovel: Imovel; inquilino: Inquilino }> {
+  const contrato = await fontes.contratos.buscarPorId(contratoId);
+  if (!contrato) throw new RecursoNaoEncontrado("Contrato", contratoId);
+
+  const ocupacao = await fontes.ocupacoes.buscarPorId(contrato.ocupacaoId);
+  if (!ocupacao) throw new RecursoNaoEncontrado("Ocupação", contrato.ocupacaoId);
+
+  const [imovel, inquilino] = await Promise.all([
+    fontes.imoveis.buscarPorId(ocupacao.imovelId),
+    fontes.inquilinos.buscarPorId(ocupacao.inquilinoId),
+  ]);
+  if (!imovel) throw new RecursoNaoEncontrado("Imóvel", ocupacao.imovelId);
+  if (!inquilino) throw new RecursoNaoEncontrado("Inquilino", ocupacao.inquilinoId);
+
+  return { contrato, imovel, inquilino };
+}
 
 export class ListarContratos {
   constructor(
@@ -170,6 +209,46 @@ export class EditarContrato {
 }
 
 /**
+ * Reúne, num único lugar, tudo que o contrato precisa exibir: as duas partes
+ * qualificadas, o imóvel e as condições. Compartilhado por quem gera o PDF e
+ * por quem o reenvia, para os dois nunca divergirem.
+ */
+function montarDadosPdf(
+  contrato: Contrato,
+  imovel: Imovel,
+  inquilino: Inquilino,
+): DadosContratoPdf {
+  return {
+    numero: contrato.numero,
+    locador: {
+      nome: locadorConfig.nome,
+      rotulo: locadorConfig.rotulo,
+      profissao: locadorConfig.profissao || undefined,
+      rg: locadorConfig.rg || undefined,
+      documento: locadorConfig.documento ? formatarCpfCnpj(locadorConfig.documento) : undefined,
+      endereco: locadorConfig.endereco || undefined,
+    },
+    locatario: {
+      nome: inquilino.nome,
+      profissao: inquilino.profissao,
+      rg: inquilino.rg,
+      documento: formatarCpfCnpj(inquilino.documento),
+      telefone: formatarTelefone(inquilino.telefone),
+    },
+    natureza: TIPOS_COMERCIAIS.includes(imovel.tipo) ? "comercial" : "residencial",
+    imovel: {
+      titulo: imovel.titulo,
+      enderecoCompleto: Endereco.completo(imovel.endereco),
+      tipo: ROTULOS_TIPO_IMOVEL[imovel.tipo],
+      areaM2: imovel.caracteristicas.areaM2,
+    },
+    condicoes: contrato.condicoes,
+    cidadeAssinatura: imovel.endereco.cidade,
+    dataEmissao: new Date().toISOString(),
+  };
+}
+
+/**
  * Gera o PDF do contrato e o armazena.
  *
  * O caso de uso não sabe que o PDF é feito com @react-pdf/renderer nem que o
@@ -187,38 +266,14 @@ export class GerarContratoPdf {
   ) {}
 
   async executar(contratoId: string): Promise<Contrato> {
-    const contrato = await this.contratos.buscarPorId(contratoId);
-    if (!contrato) throw new RecursoNaoEncontrado("Contrato", contratoId);
-
-    const ocupacao = await this.ocupacoes.buscarPorId(contrato.ocupacaoId);
-    if (!ocupacao) throw new RecursoNaoEncontrado("Ocupação", contrato.ocupacaoId);
-
-    const [imovel, inquilino] = await Promise.all([
-      this.imoveis.buscarPorId(ocupacao.imovelId),
-      this.inquilinos.buscarPorId(ocupacao.inquilinoId),
-    ]);
-    if (!imovel) throw new RecursoNaoEncontrado("Imóvel", ocupacao.imovelId);
-    if (!inquilino) throw new RecursoNaoEncontrado("Inquilino", ocupacao.inquilinoId);
-
-    const bytes = await this.pdf.gerar({
-      numero: contrato.numero,
-      locador: LOCADOR,
-      locatario: {
-        nome: inquilino.nome,
-        documento: formatarCpfCnpj(inquilino.documento),
-        email: inquilino.email,
-        telefone: formatarTelefone(inquilino.telefone),
-      },
-      imovel: {
-        titulo: imovel.titulo,
-        enderecoCompleto: Endereco.completo(imovel.endereco),
-        tipo: ROTULOS_TIPO_IMOVEL[imovel.tipo],
-        areaM2: imovel.caracteristicas.areaM2,
-      },
-      condicoes: contrato.condicoes,
-      cidadeAssinatura: imovel.endereco.cidade,
-      dataEmissao: new Date().toISOString(),
+    const { contrato, imovel, inquilino } = await carregarContrato(contratoId, {
+      contratos: this.contratos,
+      ocupacoes: this.ocupacoes,
+      imoveis: this.imoveis,
+      inquilinos: this.inquilinos,
     });
+
+    const bytes = await this.pdf.gerar(montarDadosPdf(contrato, imovel, inquilino));
 
     // Substitui o PDF anterior para não acumular arquivos órfãos.
     if (contrato.arquivoPdfUrl) {
@@ -226,7 +281,7 @@ export class GerarContratoPdf {
     }
 
     const arquivo = await this.storage.salvar("contratos", {
-      nome: `contrato-${contrato.numero.replace("/", "-")}.pdf`,
+      nome: nomeArquivoPdf(contrato.numero),
       tipo: "application/pdf",
       conteudo: bytes,
     });
@@ -235,6 +290,94 @@ export class GerarContratoPdf {
       arquivoPdfUrl: arquivo.url,
       dataGeracao: new Date().toISOString(),
     });
+  }
+}
+
+/**
+ * Entrega o PDF do contrato ao fluxo do n8n, que decide o destino — no uso
+ * previsto, encaminhar por WhatsApp para o número definido no próprio fluxo.
+ *
+ * O PDF enviado é exatamente o que está guardado: se ainda não existe, ele é
+ * gerado antes, para que o arquivo do painel e o que chega ao destinatário
+ * sejam o mesmo documento.
+ */
+export class EnviarContratoPorWebhook {
+  constructor(
+    private readonly contratos: ContratoRepository,
+    private readonly ocupacoes: OcupacaoRepository,
+    private readonly imoveis: ImovelRepository,
+    private readonly inquilinos: InquilinoRepository,
+    private readonly storage: StorageService,
+    private readonly webhook: WebhookContratoService,
+    private readonly gerarPdf: GerarContratoPdf,
+  ) {}
+
+  async executar(contratoId: string): Promise<{ numero: string }> {
+    if (!this.webhook.configurado()) {
+      throw new RegraDeNegocioViolada(
+        "Envio automático não configurado. Defina N8N_WEBHOOK_CONTRATO_URL no .env do servidor.",
+      );
+    }
+
+    const fontes = {
+      contratos: this.contratos,
+      ocupacoes: this.ocupacoes,
+      imoveis: this.imoveis,
+      inquilinos: this.inquilinos,
+    };
+
+    const { imovel, inquilino, ...carregado } = await carregarContrato(contratoId, fontes);
+
+    // Sem PDF ainda: gera agora, para o arquivo enviado ser o mesmo do painel.
+    const contrato = carregado.contrato.arquivoPdfUrl
+      ? carregado.contrato
+      : await this.gerarPdf.executar(contratoId);
+
+    const bytes = await this.storage.ler(chaveDeUrl(contrato.arquivoPdfUrl!));
+    if (!bytes) {
+      throw new RegraDeNegocioViolada(
+        "O PDF deste contrato não está mais disponível. Gere o PDF novamente e repita o envio.",
+      );
+    }
+
+    const payload = {
+      evento: "contrato.gerado" as const,
+      contrato: {
+        id: contrato.id,
+        numero: contrato.numero,
+        status: contrato.status,
+        dataInicio: contrato.condicoes.dataInicio,
+        dataFim: contrato.condicoes.dataFim,
+        valorAluguel: contrato.condicoes.valorAluguel,
+      },
+      locatario: {
+        nome: inquilino.nome,
+        documento: formatarCpfCnpj(inquilino.documento),
+        rg: inquilino.rg,
+        telefone: comDdi(inquilino.telefone),
+        email: inquilino.email,
+      },
+      imovel: { titulo: imovel.titulo, endereco: Endereco.completo(imovel.endereco) },
+      pdf: {
+        nomeArquivo: nomeArquivoPdf(contrato.numero),
+        tipo: "application/pdf" as const,
+        base64: Buffer.from(bytes).toString("base64"),
+      },
+    };
+
+    // A falha é do fluxo externo, não um bug: vira erro de domínio para que a
+    // tela mostre o motivo ("o n8n respondeu 502") em vez de "algo deu errado".
+    try {
+      await this.webhook.enviar(payload);
+    } catch (erro) {
+      throw new RegraDeNegocioViolada(
+        `Não foi possível entregar o contrato ao fluxo do n8n. ${
+          erro instanceof Error ? erro.message : ""
+        }`.trim(),
+      );
+    }
+
+    return { numero: contrato.numero };
   }
 }
 

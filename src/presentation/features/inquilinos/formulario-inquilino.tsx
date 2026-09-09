@@ -38,6 +38,7 @@ export function FormularioInquilino({ inquilino }: { inquilino?: Inquilino }) {
           nome: inquilino.nome,
           tipoDocumento: inquilino.tipoDocumento,
           documento: inquilino.documento,
+          rg: inquilino.rg ?? "",
           email: inquilino.email,
           telefone: inquilino.telefone,
           profissao: inquilino.profissao ?? "",
@@ -48,6 +49,7 @@ export function FormularioInquilino({ inquilino }: { inquilino?: Inquilino }) {
           nome: "",
           tipoDocumento: "cpf",
           documento: "",
+          rg: "",
           email: "",
           telefone: "",
           profissao: "",
@@ -103,7 +105,6 @@ export function FormularioInquilino({ inquilino }: { inquilino?: Inquilino }) {
               htmlFor="documento"
               obrigatorio
               erro={errors.documento?.message}
-              className="sm:col-span-2"
               dica="Somente números ou com pontuação — validamos os dígitos."
             >
               <Input
@@ -112,6 +113,20 @@ export function FormularioInquilino({ inquilino }: { inquilino?: Inquilino }) {
                 placeholder={tipoDocumento === "cnpj" ? "00.000.000/0000-00" : "000.000.000-00"}
                 invalido={!!errors.documento}
                 {...register("documento")}
+              />
+            </Field>
+
+            <Field
+              label={tipoDocumento === "cnpj" ? "Inscrição estadual / RG" : "RG"}
+              htmlFor="rg"
+              erro={errors.rg?.message}
+              dica="Opcional — aparece no contrato ao lado do CPF."
+            >
+              <Input
+                id="rg"
+                placeholder="00.000.000-0"
+                invalido={!!errors.rg}
+                {...register("rg")}
               />
             </Field>
           </div>

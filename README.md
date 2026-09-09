@@ -175,6 +175,51 @@ a imagem. O template completo está em `.env.example`.
 | `DIRETORIO_DADOS` | Onde ficam os JSON e os uploads (padrão `.data`; no container, `/app/dados`). |
 | `DADOS_DEMONSTRACAO` | `true` sobe com os dados de exemplo; `false` sobe vazio. Sem valor: vazio em produção, exemplo em desenvolvimento. |
 | `PORTA_HOST` | Só para o compose: porta do host onde o container escuta (padrão `3102`). |
+| `ENDERECO_IMOBILIARIA` | Endereço mostrado no rodapé e na página de contato. |
+| `N8N_WEBHOOK_CONTRATO_URL` | Webhook do n8n que recebe o contrato. Sem ela, o botão "Enviar WhatsApp" não aparece. |
+| `N8N_WEBHOOK_TOKEN` | Opcional: vai como `Authorization: Bearer <token>` na chamada ao n8n. |
+
+## Contrato de locação
+
+O PDF segue o contrato em papel que a imobiliária usa: preâmbulo, qualificação
+das partes e as cláusulas de **objeto, prazo, valor e pagamento e conservação**.
+Caução e reajuste entram como parágrafos da cláusula de valor, e só quando
+existem — contrato sem caução não ganha parágrafo de garantia.
+
+A qualificação da **locadora** (nome, profissão, RG, endereço) é fixa em
+`src/lib/config.ts`: há uma única locadora. O template não sabe disso — recebe
+as duas partes por parâmetro —, então transformar isso em cadastro depois é
+mexer só na configuração.
+
+Do **locatário** saem nome, profissão, RG, CPF e telefone, tudo do cadastro do
+inquilino. Campo não preenchido não vira linha em branco: ele some do PDF.
+
+## Envio do contrato pelo n8n
+
+Na tela de contratos, **Enviar WhatsApp** entrega o PDF a um fluxo do n8n, que
+decide o destino — o número fica no próprio fluxo, não no sistema. Se o contrato
+ainda não tiver PDF, ele é gerado antes: o arquivo enviado é sempre o mesmo que
+fica no painel.
+
+Configure `N8N_WEBHOOK_CONTRATO_URL` (e, se quiser autenticação, `N8N_WEBHOOK_TOKEN`).
+O `POST` chega assim:
+
+```json
+{
+  "evento": "contrato.gerado",
+  "contrato": { "id": "ctr_...", "numero": "0001/2026", "status": "vigente",
+                "dataInicio": "2026-08-10", "dataFim": "2027-02-10", "valorAluguel": 500 },
+  "locatario": { "nome": "...", "documento": "121.187.438-90", "rg": "26.383.656-3",
+                 "telefone": "5518997943842", "email": "..." },
+  "imovel": { "titulo": "...", "endereco": "..." },
+  "pdf": { "nomeArquivo": "contrato-0001-2026.pdf", "tipo": "application/pdf",
+           "base64": "JVBERi0xLjcK..." }
+}
+```
+
+No fluxo, um nó **Convert to File → Base64 to File** sobre `pdf.base64` produz o
+binário pronto para o nó de WhatsApp. Um status HTTP fora da faixa 2xx volta como
+erro na tela, com o corpo da resposta do n8n na mensagem.
 
 ## Deploy na VPS
 

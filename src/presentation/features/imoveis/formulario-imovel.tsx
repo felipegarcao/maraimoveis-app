@@ -52,7 +52,7 @@ const VALORES_INICIAIS: DadosImovel = {
     suites: 0,
     banheiros: 1,
     vagas: 0,
-    areaM2: 0,
+    areaM2: undefined,
     mobiliado: false,
     aceitaPet: false,
     condominio: false,
@@ -75,7 +75,7 @@ export function FormularioImovel({ imovel }: { imovel?: Imovel }) {
     defaultValues: imovel
       ? {
           titulo: imovel.titulo,
-          descricao: imovel.descricao,
+          descricao: imovel.descricao ?? "",
           tipo: imovel.tipo,
           status: imovel.status,
           endereco: { ...imovel.endereco, complemento: imovel.endereco.complemento ?? "" },
@@ -121,9 +121,8 @@ export function FormularioImovel({ imovel }: { imovel?: Imovel }) {
           <Field
             label="Descrição"
             htmlFor="descricao"
-            obrigatorio
             erro={errors.descricao?.message}
-            dica="Detalhe acabamentos, entorno, transporte e diferenciais."
+            dica="Opcional — detalhe acabamentos, entorno, transporte e diferenciais."
           >
             <Textarea
               id="descricao"
@@ -279,7 +278,6 @@ export function FormularioImovel({ imovel }: { imovel?: Imovel }) {
                 ["suites", "Suítes"],
                 ["banheiros", "Banheiros"],
                 ["vagas", "Vagas"],
-                ["areaM2", "Área (m²)"],
               ] as const
             ).map(([campo, rotulo]) => (
               <Field
@@ -298,6 +296,27 @@ export function FormularioImovel({ imovel }: { imovel?: Imovel }) {
                 />
               </Field>
             ))}
+
+            {/* Opcional: em branco significa "não informado", nunca 0 m². */}
+            <Field
+              label="Área (m²)"
+              htmlFor="areaM2"
+              erro={errors.caracteristicas?.areaM2?.message}
+              dica="Opcional."
+            >
+              <Input
+                id="areaM2"
+                type="number"
+                min={0}
+                inputMode="numeric"
+                placeholder="—"
+                invalido={!!errors.caracteristicas?.areaM2}
+                {...register("caracteristicas.areaM2", {
+                  // Campo vazio é "não informado", não zero.
+                  setValueAs: (valor) => (valor === "" || valor == null ? undefined : Number(valor)),
+                })}
+              />
+            </Field>
           </div>
 
           <div className="flex flex-wrap gap-x-6 gap-y-3 border-t border-line pt-4">

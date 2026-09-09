@@ -22,7 +22,13 @@ export class MockInquilinoRepository implements InquilinoRepository {
         if (filtro.ativo !== undefined && inquilino.ativo !== filtro.ativo) return false;
         if (termo) {
           const alvo = normalizarTexto(
-            [inquilino.nome, inquilino.email ?? "", inquilino.documento, inquilino.telefone].join(" "),
+            [
+              inquilino.nome,
+              inquilino.email ?? "",
+              inquilino.documento,
+              inquilino.rg ?? "",
+              inquilino.telefone,
+            ].join(" "),
           );
           if (!alvo.includes(termo)) return false;
         }

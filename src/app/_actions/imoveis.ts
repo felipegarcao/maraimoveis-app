@@ -22,6 +22,7 @@ export async function criarImovel(entrada: unknown) {
     await exigirSessao();
     const imovel = await casosDeUso.imoveis.criar.executar({
       ...dados,
+      descricao: dados.descricao || undefined,
       endereco: { ...dados.endereco, complemento: dados.endereco.complemento || undefined },
     });
     revalidar(imovel.id);
@@ -34,6 +35,7 @@ export async function editarImovel(id: string, entrada: unknown) {
     await exigirSessao();
     const imovel = await casosDeUso.imoveis.editar.executar(id, {
       ...dados,
+      descricao: dados.descricao || undefined,
       endereco: { ...dados.endereco, complemento: dados.endereco.complemento || undefined },
     });
     revalidar(imovel.id);
