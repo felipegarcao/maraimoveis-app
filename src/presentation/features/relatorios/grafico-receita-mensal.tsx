@@ -84,7 +84,7 @@ export function GraficoReceitaMensal({ dados }: { dados: readonly PontoReceitaMe
                   if (!active || !payload?.length) return null;
                   const ponto = payload[0].payload as (typeof series)[number];
                   return (
-                    <div className="rounded-lg border border-line bg-white px-3 py-2 text-xs shadow-lift">
+                    <div className="rounded-lg border border-line bg-surface px-3 py-2 text-xs shadow-lift">
                       <p className="font-semibold text-slate-900">{label}</p>
                       <p className="mt-1 text-slate-500">
                         Cobrado {formatarMoeda(ponto.total)}

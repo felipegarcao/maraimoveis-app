@@ -2,7 +2,7 @@ import type { ComponentPropsWithRef } from "react";
 import { cn } from "@/lib/utils";
 
 const BASE =
-  "w-full rounded-lg border bg-white px-3 text-sm text-slate-900 transition-colors placeholder:text-slate-400 " +
+  "w-full rounded-lg border bg-surface px-3 text-sm text-slate-900 transition-colors placeholder:text-slate-400 " +
   "disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-500";
 
 const NORMAL = "border-line hover:border-slate-300 focus:border-brand-500";

@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 
 const VARIANTES = {
   primario: "bg-brand-600 text-white hover:bg-brand-700 active:bg-brand-800 shadow-sm",
-  secundario: "bg-white text-slate-700 border border-line hover:bg-slate-50 active:bg-slate-100",
+  secundario: "bg-surface text-slate-700 border border-line hover:bg-slate-50 active:bg-slate-100",
   suave: "bg-brand-50 text-brand-700 hover:bg-brand-100",
   fantasma: "text-slate-600 hover:bg-slate-100 hover:text-slate-900",
   perigo: "bg-red-600 text-white hover:bg-red-700 active:bg-red-800 shadow-sm",

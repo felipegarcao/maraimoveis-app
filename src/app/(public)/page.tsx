@@ -49,7 +49,7 @@ export default async function PaginaHome({ searchParams }: { searchParams: Param
     <>
       <section className="border-b border-line bg-gradient-to-b from-brand-50/80 to-canvas">
         <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6 sm:py-16">
-          <p className="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1 text-xs font-medium text-brand-700 shadow-sm ring-1 ring-brand-100">
+          <p className="inline-flex items-center gap-1.5 rounded-full bg-surface px-3 py-1 text-xs font-medium text-brand-700 shadow-sm ring-1 ring-brand-100">
             <Sparkles aria-hidden className="size-3.5" />
             Imóveis selecionados e prontos para morar
           </p>
@@ -63,7 +63,7 @@ export default async function PaginaHome({ searchParams }: { searchParams: Param
           <ul className="mt-7 grid gap-3 sm:grid-cols-3">
             {[
               { icone: ShieldCheck, titulo: "Contrato transparente", texto: "Sem taxas escondidas." },
-              { icone: MapPin, titulo: "Imóveis bem localizados", texto: "São Paulo e região do ABC." },
+              { icone: MapPin, titulo: "Imóveis bem localizados", texto: "Presidente Prudente e região" },
               { icone: HomeIcon, titulo: "Atendimento próximo", texto: "Resposta no mesmo dia." },
             ].map(({ icone: Icone, titulo, texto: descricao }) => (
               <li

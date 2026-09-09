@@ -6,7 +6,7 @@ import { useState } from "react";
 import { Building2, Menu, UserRound, X } from "lucide-react";
 import { siteConfig } from "@/lib/config";
 import { cn } from "@/lib/utils";
-import { classesBotao } from "@/presentation/components/ui";
+import { classesBotao, ThemeToggle } from "@/presentation/components/ui";
 
 const LINKS = [
   { href: "/", rotulo: "Imóveis" },
@@ -59,16 +59,20 @@ export function HeaderPublico() {
           </Link>
         </nav>
 
-        <button
-          type="button"
-          onClick={() => setAberto((v) => !v)}
-          aria-expanded={aberto}
-          aria-controls="menu-mobile"
-          aria-label={aberto ? "Fechar menu" : "Abrir menu"}
-          className="rounded-lg p-2 text-slate-600 transition-colors hover:bg-slate-100 md:hidden"
-        >
-          {aberto ? <X aria-hidden className="size-5" /> : <Menu aria-hidden className="size-5" />}
-        </button>
+        <div className="flex items-center gap-1">
+          <ThemeToggle />
+
+          <button
+            type="button"
+            onClick={() => setAberto((v) => !v)}
+            aria-expanded={aberto}
+            aria-controls="menu-mobile"
+            aria-label={aberto ? "Fechar menu" : "Abrir menu"}
+            className="rounded-lg p-2 text-slate-600 transition-colors hover:bg-slate-100 md:hidden"
+          >
+            {aberto ? <X aria-hidden className="size-5" /> : <Menu aria-hidden className="size-5" />}
+          </button>
+        </div>
       </div>
 
       {aberto ? (
