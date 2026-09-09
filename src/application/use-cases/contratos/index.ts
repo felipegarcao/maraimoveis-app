@@ -182,12 +182,21 @@ export class CriarContrato {
       condicoes,
       arquivoPdfUrl: null,
       dataGeracao: null,
+      statusAssinatura: "pendente",
+      assinaturaTelefone: null,
+      assinaturaEnviadaEm: null,
+      assinaturaOrigem: null,
+      arquivoAssinadoUrl: null,
+      assinadoEm: null,
     });
   }
 }
 
 export class EditarContrato {
-  constructor(private readonly contratos: ContratoRepository) {}
+  constructor(
+    private readonly contratos: ContratoRepository,
+    private readonly storage: StorageService,
+  ) {}
 
   async executar(id: string, condicoes: Partial<CondicoesContrato>): Promise<Contrato> {
     const atual = await this.contratos.buscarPorId(id);
@@ -199,11 +208,23 @@ export class EditarContrato {
       "yyyy-MM-dd",
     );
 
+    if (atual.arquivoAssinadoUrl) {
+      await this.storage.remover(chaveDeUrl(atual.arquivoAssinadoUrl));
+    }
+
     // Alterar as condições invalida o PDF já emitido — ele precisa ser regerado.
+    // Por tabela, invalida também uma assinatura em andamento ou já registrada:
+    // o documento assinado não corresponde mais aos termos atuais.
     return this.contratos.atualizar(id, {
       condicoes: { ...mescladas, dataFim },
       arquivoPdfUrl: null,
       dataGeracao: null,
+      statusAssinatura: "pendente",
+      assinaturaTelefone: null,
+      assinaturaEnviadaEm: null,
+      assinaturaOrigem: null,
+      arquivoAssinadoUrl: null,
+      assinadoEm: null,
     });
   }
 }
@@ -294,6 +315,45 @@ export class GerarContratoPdf {
 }
 
 /**
+ * Monta o corpo enviado ao webhook do n8n — compartilhado pelo envio comum e
+ * pelo envio para assinatura, que só diferem no `evento` e em `telefoneEnvio`.
+ */
+function montarPayloadWebhook(
+  evento: "contrato.gerado" | "contrato.assinatura",
+  contrato: Contrato,
+  imovel: Imovel,
+  inquilino: Inquilino,
+  bytes: Uint8Array,
+  telefoneEnvio?: string,
+) {
+  return {
+    evento,
+    contrato: {
+      id: contrato.id,
+      numero: contrato.numero,
+      status: contrato.status,
+      dataInicio: contrato.condicoes.dataInicio,
+      dataFim: contrato.condicoes.dataFim,
+      valorAluguel: contrato.condicoes.valorAluguel,
+    },
+    locatario: {
+      nome: inquilino.nome,
+      documento: formatarCpfCnpj(inquilino.documento),
+      rg: inquilino.rg,
+      telefone: comDdi(inquilino.telefone),
+      email: inquilino.email,
+    },
+    imovel: { titulo: imovel.titulo, endereco: Endereco.completo(imovel.endereco) },
+    pdf: {
+      nomeArquivo: nomeArquivoPdf(contrato.numero),
+      tipo: "application/pdf" as const,
+      base64: Buffer.from(bytes).toString("base64"),
+    },
+    ...(telefoneEnvio ? { telefoneEnvio } : {}),
+  };
+}
+
+/**
  * Entrega o PDF do contrato ao fluxo do n8n, que decide o destino — no uso
  * previsto, encaminhar por WhatsApp para o número definido no próprio fluxo.
  *
@@ -340,30 +400,7 @@ export class EnviarContratoPorWebhook {
       );
     }
 
-    const payload = {
-      evento: "contrato.gerado" as const,
-      contrato: {
-        id: contrato.id,
-        numero: contrato.numero,
-        status: contrato.status,
-        dataInicio: contrato.condicoes.dataInicio,
-        dataFim: contrato.condicoes.dataFim,
-        valorAluguel: contrato.condicoes.valorAluguel,
-      },
-      locatario: {
-        nome: inquilino.nome,
-        documento: formatarCpfCnpj(inquilino.documento),
-        rg: inquilino.rg,
-        telefone: comDdi(inquilino.telefone),
-        email: inquilino.email,
-      },
-      imovel: { titulo: imovel.titulo, endereco: Endereco.completo(imovel.endereco) },
-      pdf: {
-        nomeArquivo: nomeArquivoPdf(contrato.numero),
-        tipo: "application/pdf" as const,
-        base64: Buffer.from(bytes).toString("base64"),
-      },
-    };
+    const payload = montarPayloadWebhook("contrato.gerado", contrato, imovel, inquilino, bytes);
 
     // A falha é do fluxo externo, não um bug: vira erro de domínio para que a
     // tela mostre o motivo ("o n8n respondeu 502") em vez de "algo deu errado".
@@ -378,6 +415,143 @@ export class EnviarContratoPorWebhook {
     }
 
     return { numero: contrato.numero };
+  }
+}
+
+/**
+ * Encaminha o contrato para assinatura: mesmo fluxo do n8n, mas para o número
+ * escolhido no modal — que pode não ser o telefone cadastrado do inquilino
+ * (ex.: assinar por um número de terceiros, ou reenviar depois de um número
+ * trocado). Marca o contrato como "enviada" para o botão do painel refletir
+ * o andamento.
+ */
+export class EnviarContratoParaAssinatura {
+  constructor(
+    private readonly contratos: ContratoRepository,
+    private readonly ocupacoes: OcupacaoRepository,
+    private readonly imoveis: ImovelRepository,
+    private readonly inquilinos: InquilinoRepository,
+    private readonly storage: StorageService,
+    private readonly webhook: WebhookContratoService,
+    private readonly gerarPdf: GerarContratoPdf,
+  ) {}
+
+  async executar(contratoId: string, telefone: string): Promise<{ numero: string }> {
+    if (!this.webhook.configurado()) {
+      throw new RegraDeNegocioViolada(
+        "Envio automático não configurado. Defina N8N_WEBHOOK_CONTRATO_URL no .env do servidor.",
+      );
+    }
+
+    const fontes = {
+      contratos: this.contratos,
+      ocupacoes: this.ocupacoes,
+      imoveis: this.imoveis,
+      inquilinos: this.inquilinos,
+    };
+
+    const { imovel, inquilino, ...carregado } = await carregarContrato(contratoId, fontes);
+
+    const contrato = carregado.contrato.arquivoPdfUrl
+      ? carregado.contrato
+      : await this.gerarPdf.executar(contratoId);
+
+    const bytes = await this.storage.ler(chaveDeUrl(contrato.arquivoPdfUrl!));
+    if (!bytes) {
+      throw new RegraDeNegocioViolada(
+        "O PDF deste contrato não está mais disponível. Gere o PDF novamente e repita o envio.",
+      );
+    }
+
+    const telefoneEnvio = comDdi(telefone);
+    const payload = montarPayloadWebhook(
+      "contrato.assinatura",
+      contrato,
+      imovel,
+      inquilino,
+      bytes,
+      telefoneEnvio,
+    );
+
+    try {
+      await this.webhook.enviar(payload);
+    } catch (erro) {
+      throw new RegraDeNegocioViolada(
+        `Não foi possível encaminhar o contrato para assinatura. ${
+          erro instanceof Error ? erro.message : ""
+        }`.trim(),
+      );
+    }
+
+    await this.contratos.atualizar(contratoId, {
+      statusAssinatura: "enviada",
+      assinaturaTelefone: telefoneEnvio,
+      assinaturaEnviadaEm: new Date().toISOString(),
+    });
+
+    return { numero: contrato.numero };
+  }
+}
+
+/** Documento assinado recebido — mesmo formato de upload usado para fotos de imóvel. */
+export interface ArquivoAssinado {
+  readonly nome: string;
+  readonly tipo: string;
+  /** Data URL (base64) vinda do input de arquivo. */
+  readonly conteudo: string;
+}
+
+const TIPOS_ASSINADO_ACEITOS = ["application/pdf"];
+const TAMANHO_MAXIMO_ASSINADO_BYTES = 10 * 1024 * 1024;
+
+/**
+ * Registra o documento assinado, seja ele o PDF devolvido pelo próprio fluxo
+ * digital (n8n, assim que o inquilino assina pelo WhatsApp) ou um documento
+ * assinado à parte que o gestor importa manualmente — os dois casos só
+ * diferem na origem, tudo o mais (validação, storage, status) é o mesmo.
+ */
+export class RegistrarDocumentoAssinado {
+  constructor(
+    private readonly contratos: ContratoRepository,
+    private readonly storage: StorageService,
+  ) {}
+
+  async executar(
+    contratoId: string,
+    arquivo: ArquivoAssinado,
+    origem: "digital" | "sistema",
+  ): Promise<Contrato> {
+    const contrato = await this.contratos.buscarPorId(contratoId);
+    if (!contrato) throw new RecursoNaoEncontrado("Contrato", contratoId);
+
+    if (!TIPOS_ASSINADO_ACEITOS.includes(arquivo.tipo)) {
+      throw new RegraDeNegocioViolada("Formato não aceito. Envie o documento assinado em PDF.");
+    }
+
+    const base64 = arquivo.conteudo.split("base64,")[1] ?? "";
+    // 4 caracteres de base64 representam 3 bytes.
+    const tamanhoAproximado = Math.floor((base64.length * 3) / 4);
+    if (tamanhoAproximado > TAMANHO_MAXIMO_ASSINADO_BYTES) {
+      throw new RegraDeNegocioViolada("Arquivo muito grande. O limite é 10 MB.");
+    }
+
+    // Substitui o documento anterior para não acumular arquivos órfãos.
+    if (contrato.arquivoAssinadoUrl) {
+      await this.storage.remover(chaveDeUrl(contrato.arquivoAssinadoUrl));
+    }
+
+    const salvo = await this.storage.salvar("contratos-assinados", {
+      nome: arquivo.nome,
+      tipo: arquivo.tipo,
+      conteudo: arquivo.conteudo,
+    });
+
+    return this.contratos.atualizar(contratoId, {
+      statusAssinatura: "assinada",
+      assinaturaOrigem: origem,
+      arquivoAssinadoUrl: salvo.url,
+      assinadoEm: new Date().toISOString(),
+    });
   }
 }
 
@@ -397,6 +571,9 @@ export class ExcluirContrato {
     }
     if (contrato.arquivoPdfUrl) {
       await this.storage.remover(chaveDeUrl(contrato.arquivoPdfUrl));
+    }
+    if (contrato.arquivoAssinadoUrl) {
+      await this.storage.remover(chaveDeUrl(contrato.arquivoAssinadoUrl));
     }
     await this.contratos.excluir(id);
   }

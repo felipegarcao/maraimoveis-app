@@ -3,9 +3,9 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
-import { Download, FileDown, Pencil, Send, Trash2 } from "lucide-react";
+import { Download, FileDown, FileSignature, Pencil, Send, Trash2 } from "lucide-react";
 import type { Contrato } from "@/domain/entities";
-import type { OcupacaoDetalhada } from "@/application/dtos";
+import type { OcupacaoDetalhada, ResumoInquilino } from "@/application/dtos";
 import {
   enviarContratoWebhook,
   excluirContrato,
@@ -13,15 +13,19 @@ import {
 } from "@/app/_actions/contratos";
 import { Button, ConfirmDialog, classesBotao } from "@/presentation/components/ui";
 import { FormularioContrato } from "./formulario-contrato";
+import { ModalAssinaturaContrato } from "./modal-assinatura-contrato";
 
 export function AcoesContrato({
   contrato,
   ocupacoes,
+  inquilino,
   compacto = false,
   envioDisponivel = false,
 }: {
   contrato: Contrato;
   ocupacoes: OcupacaoDetalhada[];
+  /** Necessário só para pré-preencher o telefone no modal de assinatura. */
+  inquilino: ResumoInquilino;
   compacto?: boolean;
   /** Sem webhook configurado no servidor não há para onde enviar: o botão some. */
   envioDisponivel?: boolean;
@@ -30,6 +34,7 @@ export function AcoesContrato({
   const [gerando, setGerando] = useState(false);
   const [enviando, setEnviando] = useState(false);
   const [editando, setEditando] = useState(false);
+  const [assinando, setAssinando] = useState(false);
   const [confirmando, setConfirmando] = useState(false);
   const tamanho = compacto ? "sm" : "md";
 
@@ -87,6 +92,11 @@ export function AcoesContrato({
           </a>
         ) : null}
 
+        <Button variante="secundario" tamanho={tamanho} onClick={() => setAssinando(true)}>
+          <FileSignature aria-hidden className="size-4" />
+          Assinatura
+        </Button>
+
         <Button variante="secundario" tamanho={tamanho} onClick={gerar} carregando={gerando}>
           <FileDown aria-hidden className="size-4" />
           {contrato.arquivoPdfUrl ? "Regerar" : "Gerar PDF"}
@@ -118,6 +128,15 @@ export function AcoesContrato({
           aoFechar={() => setEditando(false)}
           ocupacoes={ocupacoes}
           contrato={contrato}
+        />
+      ) : null}
+
+      {assinando ? (
+        <ModalAssinaturaContrato
+          aberto={assinando}
+          aoFechar={() => setAssinando(false)}
+          contrato={contrato}
+          inquilino={inquilino}
         />
       ) : null}
 

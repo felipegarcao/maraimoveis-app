@@ -1,7 +1,9 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { z } from "zod";
 import { contratoSchema } from "@/application/schemas";
+import { ehTelefoneValido } from "@/application/schemas/validadores";
 import { casosDeUso } from "@/casos-de-uso";
 import { executarAcao, executarSimples, exigirSessao } from "./_helpers";
 
@@ -61,6 +63,44 @@ export async function enviarContratoWebhook(id: string) {
     const resultado = await casosDeUso.contratos.enviarPorWebhook.executar(id);
     revalidar();
     return resultado;
+  });
+}
+
+const telefoneAssinaturaSchema = z
+  .string()
+  .min(1, "Informe um telefone.")
+  .refine(ehTelefoneValido, "Telefone inválido. Use DDD + número.");
+
+/**
+ * Encaminha o contrato para o número escolhido no modal de assinatura — pode
+ * ser diferente do telefone cadastrado do inquilino.
+ */
+export async function enviarContratoParaAssinatura(id: string, telefone: unknown) {
+  return executarAcao(telefoneAssinaturaSchema, telefone, async (telefoneValidado) => {
+    await exigirSessao();
+    const resultado = await casosDeUso.contratos.enviarParaAssinatura.executar(id, telefoneValidado);
+    revalidar();
+    return resultado;
+  });
+}
+
+const documentoAssinadoSchema = z.object({
+  nome: z.string().min(1),
+  tipo: z.string().min(1),
+  conteudo: z.string().startsWith("data:", "Arquivo inválido."),
+});
+
+/** Registra manualmente um documento já assinado (fora do fluxo digital). */
+export async function registrarAssinaturaManual(id: string, arquivo: unknown) {
+  return executarAcao(documentoAssinadoSchema, arquivo, async (arquivoValidado) => {
+    await exigirSessao();
+    const contrato = await casosDeUso.contratos.registrarAssinatura.executar(
+      id,
+      arquivoValidado,
+      "sistema",
+    );
+    revalidar();
+    return { id: contrato.id };
   });
 }
 

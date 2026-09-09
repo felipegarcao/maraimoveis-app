@@ -20,6 +20,7 @@ import {
 import { AcoesContrato } from "@/presentation/features/contratos/acoes-contrato";
 import { BotaoNovoContrato } from "@/presentation/features/contratos/botao-novo-contrato";
 import { StatusContratoBadge } from "@/presentation/features/contratos/status-contrato-badge";
+import { StatusAssinaturaBadge } from "@/presentation/features/contratos/status-assinatura-badge";
 
 export const metadata: Metadata = { title: "Contratos" };
 
@@ -130,10 +131,14 @@ export default async function PaginaContratos({ searchParams }: Props) {
                   <p className="mt-1 text-sm font-semibold tabular-nums text-slate-900">
                     {formatarMoeda(contrato.condicoes.valorAluguel)}
                   </p>
+                  <div className="mt-2">
+                    <StatusAssinaturaBadge status={contrato.statusAssinatura} />
+                  </div>
                   <div className="mt-3 border-t border-line pt-3">
                     <AcoesContrato
                       contrato={contrato}
                       ocupacoes={ocupacoes}
+                      inquilino={inquilino}
                       envioDisponivel={envioDisponivel}
                       compacto
                     />
@@ -145,7 +150,7 @@ export default async function PaginaContratos({ searchParams }: Props) {
 
           <Card className="hidden overflow-hidden lg:block">
             <TableWrapper>
-              <Table className="min-w-[860px]">
+              <Table className="min-w-[960px]">
                 <thead>
                   <tr>
                     <Th scope="col">Número</Th>
@@ -153,6 +158,7 @@ export default async function PaginaContratos({ searchParams }: Props) {
                     <Th scope="col">Vigência</Th>
                     <Th scope="col" className="text-right">Aluguel</Th>
                     <Th scope="col">PDF</Th>
+                    <Th scope="col">Assinatura</Th>
                     <Th scope="col">Situação</Th>
                     <Th scope="col"><span className="sr-only">Ações</span></Th>
                   </tr>
@@ -191,15 +197,17 @@ export default async function PaginaContratos({ searchParams }: Props) {
                           <Badge tom="alerta">Pendente</Badge>
                         )}
                       </Td>
+                      <Td><StatusAssinaturaBadge status={contrato.statusAssinatura} /></Td>
                       <Td><StatusContratoBadge status={contrato.status} /></Td>
                       <Td>
                         <div className="flex justify-end">
                           <AcoesContrato
-                      contrato={contrato}
-                      ocupacoes={ocupacoes}
-                      envioDisponivel={envioDisponivel}
-                      compacto
-                    />
+                            contrato={contrato}
+                            ocupacoes={ocupacoes}
+                            inquilino={inquilino}
+                            envioDisponivel={envioDisponivel}
+                            compacto
+                          />
                         </div>
                       </Td>
                     </Tr>

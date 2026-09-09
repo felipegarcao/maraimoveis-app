@@ -81,7 +81,7 @@ export function criarCasosDeUso(d: Dependencias) {
       listar: new Contratos.ListarContratos(d.contratos, d.ocupacoes, d.imoveis, d.inquilinos),
       obter: new Contratos.ObterContrato(d.contratos, d.ocupacoes, d.imoveis, d.inquilinos),
       criar: new Contratos.CriarContrato(d.contratos, d.ocupacoes),
-      editar: new Contratos.EditarContrato(d.contratos),
+      editar: new Contratos.EditarContrato(d.contratos, d.storage),
       gerarPdf,
       enviarPorWebhook: new Contratos.EnviarContratoPorWebhook(
         d.contratos,
@@ -92,6 +92,16 @@ export function criarCasosDeUso(d: Dependencias) {
         d.webhookContrato,
         gerarPdf,
       ),
+      enviarParaAssinatura: new Contratos.EnviarContratoParaAssinatura(
+        d.contratos,
+        d.ocupacoes,
+        d.imoveis,
+        d.inquilinos,
+        d.storage,
+        d.webhookContrato,
+        gerarPdf,
+      ),
+      registrarAssinatura: new Contratos.RegistrarDocumentoAssinado(d.contratos, d.storage),
       excluir: new Contratos.ExcluirContrato(d.contratos, d.storage),
       /** A tela só oferece o envio quando há webhook configurado no servidor. */
       envioDisponivel: () => d.webhookContrato.configurado(),

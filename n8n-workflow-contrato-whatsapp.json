@@ -1,0 +1,88 @@
+{
+  "name": "Mara Imóveis — Contrato via WhatsApp (Evolution API)",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Contrato via WhatsApp — Evolution API\n\n**O que este fluxo faz:** recebe o contrato (PDF em base64) que o painel Mara Imóveis envia — tanto no envio comum (\"contrato.gerado\") quanto no botão **Assinatura** (\"contrato.assinatura\") — e encaminha o PDF por WhatsApp usando a Evolution API.\n\n**Antes de ativar:**\n1. Configure as variáveis de ambiente do n8n:\n   - `EVOLUTION_API_URL` — ex.: `https://sua-evolution.exemplo.com`\n   - `EVOLUTION_INSTANCE` — nome da instância conectada ao WhatsApp\n   - `EVOLUTION_API_KEY` — apikey da instância\n2. Copie a URL do nó **Webhook** (após ativar o fluxo) para `N8N_WEBHOOK_CONTRATO_URL` no `.env` do app.\n3. (Recomendado) Proteja o Webhook: em **Authentication → Header Auth**, crie uma credencial exigindo o mesmo header `Authorization: Bearer <token>` que o app envia via `N8N_WEBHOOK_TOKEN`.\n4. Confira no painel da sua Evolution API o formato exato esperado por `/message/sendMedia/{instance}` — varia um pouco entre versões; ajuste o nó **Enviar documento (Evolution API)** se necessário.\n\n**Evento \"contrato.assinatura\":** o número de destino é o que o gestor digitou no modal do painel (`telefoneEnvio`) — pode ser diferente do telefone cadastrado do inquilino. Sem ele, o fluxo usa `locatario.telefone`.",
+        "height": 500,
+        "width": 460
+      },
+      "id": "nota-instrucoes",
+      "name": "Instruções",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-360, -220]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "contrato-whatsapp",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-contrato",
+      "name": "Webhook — recebe o contrato",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [-160, 40],
+      "webhookId": "contrato-whatsapp-mara-imoveis"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Corpo enviado pelo app Mara Imóveis (ver EnvioContratoWebhook em\n// src/domain/services/index.ts): evento, contrato, locatario, imovel, pdf\n// e, só no evento \"contrato.assinatura\", telefoneEnvio.\nconst body = $input.first().json.body ?? $input.first().json;\n\nconst evento = body.evento;\nconst contrato = body.contrato ?? {};\nconst locatario = body.locatario ?? {};\nconst imovel = body.imovel ?? {};\nconst pdf = body.pdf ?? {};\n\n// telefoneEnvio (escolhido no modal de assinatura) tem prioridade sobre o\n// telefone cadastrado do inquilino — só dígitos, com DDI.\nconst numeroBruto = body.telefoneEnvio || locatario.telefone || \"\";\nconst numero = String(numeroBruto).replace(/\\D/g, \"\");\n\nif (!numero) {\n  throw new Error(\"Nenhum telefone informado para o envio do contrato.\");\n}\nif (!pdf.base64) {\n  throw new Error(\"O corpo recebido não trouxe o PDF em base64.\");\n}\n\nconst legenda =\n  evento === \"contrato.assinatura\"\n    ? `Olá, ${locatario.nome}! Segue o contrato ${contrato.numero} referente ao imóvel \"${imovel.titulo}\" para assinatura. Após assinar, é só responder esta mensagem com o documento assinado.`\n    : `Olá, ${locatario.nome}! Segue o contrato ${contrato.numero} referente ao imóvel \"${imovel.titulo}\".`;\n\nreturn [\n  {\n    json: {\n      evento,\n      contratoId: contrato.id,\n      numero,\n      legenda,\n      nomeArquivo: pdf.nomeArquivo || `contrato-${contrato.numero}.pdf`,\n      base64: pdf.base64,\n    },\n  },\n];"
+      },
+      "id": "montar-mensagem",
+      "name": "Montar mensagem e destino",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [80, 40]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.EVOLUTION_API_URL }}/message/sendMedia/{{ $env.EVOLUTION_INSTANCE }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.EVOLUTION_API_KEY }}" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"number\": \"{{ $json.numero }}\",\n  \"mediatype\": \"document\",\n  \"mimetype\": \"application/pdf\",\n  \"fileName\": \"{{ $json.nomeArquivo }}\",\n  \"caption\": \"{{ $json.legenda.replace(/\"/g, '\\\\\"') }}\",\n  \"media\": \"{{ $json.base64 }}\"\n}",
+        "options": {}
+      },
+      "id": "enviar-evolution",
+      "name": "Enviar documento (Evolution API)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [320, 40]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"ok\": true, \"contratoId\": $('Montar mensagem e destino').item.json.contratoId, \"evento\": $('Montar mensagem e destino').item.json.evento } }}",
+        "options": {}
+      },
+      "id": "responder-webhook",
+      "name": "Responder ao app",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.2,
+      "position": [560, 40]
+    }
+  ],
+  "connections": {
+    "Webhook — recebe o contrato": {
+      "main": [[{ "node": "Montar mensagem e destino", "type": "main", "index": 0 }]]
+    },
+    "Montar mensagem e destino": {
+      "main": [[{ "node": "Enviar documento (Evolution API)", "type": "main", "index": 0 }]]
+    },
+    "Enviar documento (Evolution API)": {
+      "main": [[{ "node": "Responder ao app", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" },
+  "pinData": {}
+}

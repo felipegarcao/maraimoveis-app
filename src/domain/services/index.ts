@@ -115,7 +115,12 @@ export interface HashSenhaService {
  * para um endpoint HTTP configurado por variável de ambiente.
  */
 export interface EnvioContratoWebhook {
-  readonly evento: "contrato.gerado";
+  /**
+   * `contrato.gerado`: envio comum do PDF. `contrato.assinatura`: encaminha
+   * para o número escolhido no modal de assinatura — o fluxo do n8n sabe que
+   * deve tratar a resposta como o fechamento da assinatura digital.
+   */
+  readonly evento: "contrato.gerado" | "contrato.assinatura";
   readonly contrato: {
     readonly id: string;
     readonly numero: string;
@@ -139,6 +144,13 @@ export interface EnvioContratoWebhook {
     /** Conteúdo do PDF em base64, sem o prefixo `data:`. */
     readonly base64: string;
   };
+  /**
+   * Só presente em `contrato.assinatura`: o número digitado no modal de envio
+   * para assinatura. Pode divergir do telefone cadastrado do inquilino — é
+   * este que o fluxo deve usar como destinatário, com prioridade sobre
+   * `locatario.telefone`.
+   */
+  readonly telefoneEnvio?: string;
 }
 
 export interface WebhookContratoService {
